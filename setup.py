@@ -14,8 +14,15 @@ setup(
     author_email='pypi@libasoft.de',
     license='MIT',
     classifiers=[
+        'Development Status :: 1 - Planning',
+        'Environment :: Web Environment',
+        'Framework :: Flask',
+        'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.8'
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Topic :: Internet',
+        'Topic :: Software Development :: Libraries'
     ],
     python_requires='>=3.8',
     install_requires=['discord.py >=1,<2', 'flask', 'pynacl'],
