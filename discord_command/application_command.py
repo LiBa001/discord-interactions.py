@@ -61,15 +61,23 @@ class ApplicationCommandOption:
 
 
 class ApplicationCommand:
-    def __init__(self, name, description, **kwargs):
+    def __init__(self, name, description, options: List[ApplicationCommandOption] = None, **kwargs):
         self.id = int(kwargs.get("id", 0)) or None
         self.application_id = int(kwargs.get("application_id", 0)) or None
         self.name = name
         self.description = description
-        self.options = [ApplicationCommandOption.from_dict(option) for option in kwargs.get("options", [])] or None
+        self.options = options
 
     def add_option(self, option: ApplicationCommandOption):
-        self.options.append(option)
+        if self.options is None:
+            self.options = [option]
+        else:
+            self.options.append(option)
+
+    @classmethod
+    def from_dict(cls, data) -> "ApplicationCommand":
+        data["options"] = [ApplicationCommandOption.from_dict(option) for option in data.get("options", [])] or None
+        return cls(**data)
 
     def to_dict(self) -> dict:
         data = {
