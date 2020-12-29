@@ -44,6 +44,10 @@ class Interaction:
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
         self.type = InteractionType(kwargs["type"])
+
+        if self.type == InteractionType.PING:
+            return
+
         self.data = INTERACTION_TYPE_MAP[self.type](**kwargs.get("data", {}))
         self.guild_id = int(kwargs["guild_id"])
         self.channel_id = int(kwargs["channel_id"])
