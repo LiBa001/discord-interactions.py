@@ -8,6 +8,7 @@ Licensed under: MIT License
 import json
 from enum import Enum
 from .member import Member
+from typing import Union
 
 
 class InteractionType(Enum):
@@ -51,5 +52,8 @@ class Interaction:
         self.version = int(kwargs["version"])
 
     @classmethod
-    def from_json(cls, data: str) -> "Interaction":
-        return cls(**json.loads(data))
+    def from_json(cls, data: Union[dict, str]) -> "Interaction":
+        if isinstance(data, str):
+            data = json.loads(data)
+
+        return cls(**data)

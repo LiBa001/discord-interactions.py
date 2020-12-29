@@ -20,6 +20,6 @@ setup(
     python_requires='>=3.8',
     install_requires=['discord.py >=1,<2'],
     keywords='discord discord-py discord-bot wrapper',
-    packages=find_packages(),
+    packages=find_packages(exclude=["examples"]),
     data_files=None
 )
