@@ -52,7 +52,7 @@ class Interactions:
         if isinstance(command, ApplicationCommand):
             self._commands[command.name] = command
             self._callbacks[command.name] = callback
-        elif isinstance(command, ocm.Command):
+        elif issubclass(command, ocm.Command):
             self._commands[command.__cmd_name__] = command.to_application_command()
             self._callbacks[command.__cmd_name__] = callback
         else:

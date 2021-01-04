@@ -49,25 +49,24 @@ class Option:
             self.__data_loaded = True
         return self.__data
 
-    @classmethod
-    def to_application_command_option(cls) -> ApplicationCommandOption:
+    def to_application_command_option(self) -> ApplicationCommandOption:
         options = []
-        for option in cls.__dict__.values():
+        for option in self.__dict__.values():
             if not isinstance(option, Option):
                 continue
             options.append(option.to_application_command_option())
 
-        if cls.choices:
-            choices = cls.choices.to_application_command_option_choices()
+        if self.choices:
+            choices = self.choices.to_application_command_option_choices()
         else:
             choices = None
 
         return ApplicationCommandOption(
-            type=cls.type,
-            name=cls.name,
-            description=cls.description,
-            default=cls.default,
-            required=cls.required,
+            type=self.type,
+            name=self.name,
+            description=self.description,
+            default=self.default,
+            required=self.required,
             options=options or None,
             choices=choices
         )
