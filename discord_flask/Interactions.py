@@ -1,8 +1,11 @@
 from flask import Flask, request, jsonify
 from discord_interaction import Interaction, InteractionType, InteractionResponse, InteractionResponseType
 from discord_interaction.utils import verify_key
-from discord_command import ApplicationCommand
-from typing import Callable
+from discord_command import ApplicationCommand, ocm
+from typing import Callable, Union, Type, Dict
+
+
+_CommandCallback = Callable[[Union[Interaction, ocm.Command]], InteractionResponse]
 
 
 class Interactions:
@@ -12,8 +15,8 @@ class Interactions:
 
         app.add_url_rule("/", "interactions", self._main, methods=["POST"])
 
-        self._commands = {}
-        self._callbacks = {}
+        self._commands: Dict[str, ApplicationCommand] = {}
+        self._callbacks: Dict[str, _CommandCallback] = {}
 
     def _main(self):
         # Verify request
@@ -33,18 +36,36 @@ class Interactions:
             return jsonify(InteractionResponse(InteractionResponseType.PONG).to_dict())
         elif interaction.type == InteractionType.APPLICATION_COMMAND:
             cmd = interaction.data.name
-            return jsonify(self._callbacks[cmd](interaction).to_dict())
+            cb = self._callbacks[cmd]
+
+            cb_data = interaction
+            if len(annotations := cb.__annotations__.values()) > 0:
+                cmd_type = next(iter(annotations))
+                if issubclass(cmd_type, ocm.Command):
+                    cb_data = cmd_type.wrap(interaction)
+
+            return jsonify(cb(cb_data).to_dict())
         else:
             return "Unknown interaction type", 501
 
-    def register_command(self, command: ApplicationCommand, callback: Callable[[Interaction], InteractionResponse]):
-        self._commands[command.name] = command
-        self._callbacks[command.name] = callback
+    def register_command(self, command: Union[ApplicationCommand, Type[ocm.Command], str], callback: _CommandCallback):
+        if isinstance(command, ApplicationCommand):
+            self._commands[command.name] = command
+            self._callbacks[command.name] = callback
+        elif isinstance(command, ocm.Command):
+            self._commands[command.__cmd_name__] = command.to_application_command()
+            self._callbacks[command.__cmd_name__] = callback
+        else:
+            self._callbacks[command] = callback
 
-    def command(self, command: ApplicationCommand):
+    def command(self, command: Union[ApplicationCommand, str] = None, _f: _CommandCallback = None):
         """ A decorator to register a slash command. Calls :meth:`register_command` internally. """
 
-        def decorator(f: Callable[[Interaction], InteractionResponse]):
-            self.register_command(command, f)
+        def decorator(f: _CommandCallback):
+            if command is not None:
+                self.register_command(command, f)
+            else:
+                _command = next(iter(f.__annotations__.values()))  # get :class:`ocm.Command` from type annotation
+                self.register_command(_command, f)
 
-        return decorator
+        return decorator(_f) if _f is not None else decorator

@@ -16,14 +16,26 @@ class InteractionType(Enum):
     APPLICATION_COMMAND = 2
 
 
-class ApplicationCommandInteractionDataOption:
+class _OptionGetter:
+    options: list
+
+    def get_option(self, option_name: str) -> Union["ApplicationCommandInteractionDataOption", None]:
+        """ Get option by name. """
+
+        for option in self.options:
+            if option.name == option_name:
+                return option
+        return None
+
+
+class ApplicationCommandInteractionDataOption(_OptionGetter):
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
         self.value = kwargs.get("value")
         self.options = [ApplicationCommandInteractionDataOption(**option) for option in kwargs.get("options", [])]
 
 
-class ApplicationCommandInteractionData:
+class ApplicationCommandInteractionData(_OptionGetter):
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
         self.name = kwargs["name"]
