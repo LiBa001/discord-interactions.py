@@ -76,6 +76,11 @@ class OptionContainerType(type):
                             attr.type = _type
                         elif _type == int:
                             attr.type = ApplicationCommandOptionType.INTEGER
+                        elif issubclass(_type, OptionChoices):
+                            attr.choices = _type
+                            _type = type(next(iter(_type)).value)
+                            if _type == int:
+                                attr.type = ApplicationCommandOptionType.INTEGER
 
         return cls
 
@@ -105,7 +110,9 @@ class Option(_Option, metaclass=OptionContainerType):
                 if not isinstance(self, owner)
                 else instance.__data
             )
-            return data.get_option(self.name)
+            option = data.get_option(self.name)
+
+            return option if self.choices is None else self.choices(option.value)
 
         if not self.__data_loaded:
             if isinstance(self, owner):
