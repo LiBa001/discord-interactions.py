@@ -11,6 +11,7 @@ from .interaction_response import (
     InteractionResponse,
     InteractionResponseType,
     InteractionApplicationCommandCallbackData,
+    FollowupMessage,
 )
 
 from .application_command import (
@@ -21,6 +22,7 @@ from .application_command import (
 )
 
 from .member import Member, User, UserFlags, PremiumType
+from .client import ApplicationClient, InteractionClient
 from .utils import verify_key
 
 from . import flask_ext, ocm

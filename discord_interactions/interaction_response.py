@@ -26,6 +26,7 @@ SOFTWARE.
 
 from enum import Enum
 from typing import List, Protocol
+from dataclasses import dataclass
 
 
 class DictConvertible(Protocol):
@@ -47,22 +48,18 @@ class InteractionResponseType(Enum):
     ACKNOWLEDGE_WITH_SOURCE = 5
 
 
+@dataclass()
 class InteractionApplicationCommandCallbackData:
-    def __init__(
-        self,
-        content: str,
-        tts: bool = False,
-        embeds: List[DictConvertible] = None,
-        allowed_mentions: DictConvertible = None,
-    ):
-        self.content = content
-        self.tts = tts
-        self.embeds = embeds
-        self.allowed_mentions = allowed_mentions
+    content: str
+    tts: bool = False
+    embeds: List[DictConvertible] = None
+    allowed_mentions: DictConvertible = None
 
     def to_dict(self) -> dict:
-        data = {"content": str(self.content), "tts": self.tts}
+        data = {"content": str(self.content)}
 
+        if self.tts:
+            data["tts"] = self.tts
         if self.embeds:
             data["embeds"] = [embed.to_dict() for embed in self.embeds]
         if self.allowed_mentions:
@@ -87,3 +84,24 @@ class InteractionResponse:
             response["data"] = self.data.to_dict()
 
         return response
+
+
+class FollowupMessage:
+    content: str = None
+    username: str = None
+    avatar_url: str = None
+    tts: bool = False
+    embeds: List[DictConvertible] = None
+    allowed_mentions: DictConvertible = None
+
+    def to_dict(self) -> dict:
+        data = {k: v for k, v in self.__dict__.items() if v}
+
+        if self.content:
+            data["content"] = str(self.content)
+        if self.embeds:
+            data["embeds"] = [embed.to_dict() for embed in self.embeds]
+        if self.allowed_mentions:
+            data["allowed_mentions"] = self.allowed_mentions.to_dict()
+
+        return data

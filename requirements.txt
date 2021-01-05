@@ -1,3 +1,4 @@
 flask~=1.1.2
 pynacl
 pytest~=6.2.1
+requests~=2.25.1
