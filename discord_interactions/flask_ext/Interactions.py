@@ -35,7 +35,7 @@ from discord_interactions import (
     ApplicationCommand,
 )
 from discord_interactions import ocm
-from typing import Callable, Union, Type, Dict
+from typing import Callable, Union, Type, Dict, List
 
 
 _CommandCallback = Callable[
@@ -52,6 +52,12 @@ class Interactions:
 
         self._commands: Dict[str, ApplicationCommand] = {}
         self._callbacks: Dict[str, _CommandCallback] = {}
+
+    @property
+    def commands(self) -> List[ApplicationCommand]:
+        """ All registered application commands """
+
+        return list(self._commands.values())
 
     def _verify_request(self):
         signature = request.headers.get("X-Signature-Ed25519")

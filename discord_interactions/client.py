@@ -24,8 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from requests import Session, Request, Response
-from typing import List
+from requests import Session, Request, Response, exceptions
+from typing import List, Union, Type
 
 from .application_command import ApplicationCommand as Cmd
 from .interaction import Interaction
@@ -34,8 +34,11 @@ from .interaction_response import (
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
 )
+from . import ocm
 
-API_BASE_URL = "https://discord.com/api/v8/"
+CmdClass = Type[ocm.Command]
+
+API_BASE_URL = "https://discord.com/api/v8"
 
 
 class _BaseClient:
@@ -51,18 +54,28 @@ class _BaseClient:
 
     def _send(self, req: Request) -> Response:
         r = self._s.send(self._s.prepare_request(req))
-        r.raise_for_status()
+
+        if not r.ok:
+            raise exceptions.HTTPError(
+                f"failed with status code {r.status_code}: {r.reason}: {r.json()}",
+                response=r,
+            )
+
         return r
 
 
 class ApplicationClient(_BaseClient):
     BASE_URL = f"{API_BASE_URL}/applications"
 
-    def __init__(self, app_id: int, token: str):
+    def __init__(self, token: str, app_id: int = None):
         super().__init__(app_id)
         self._token = token
 
         self._s.headers.update(self._auth_header)
+
+        if app_id is None:
+            r = self._send(Request("GET", f"{API_BASE_URL}/users/@me"))
+            self._app_id = int(r.json()["id"])
 
     @property
     def _auth_header(self) -> dict:
@@ -85,24 +98,30 @@ class ApplicationClient(_BaseClient):
 
         return [Cmd.from_dict(cmd) for cmd in r.json()]
 
-    def create_command(self, cmd: Cmd, guild: int = None) -> Cmd:
+    def create_command(self, cmd: Union[Cmd, CmdClass], guild: int = None) -> Cmd:
         """ Create a global or guild application command. """
 
+        if not isinstance(cmd, Cmd):
+            cmd = cmd.to_application_command()
+
         r = self._send(
-            Request("POST", self._cmd_url(guild_id=guild), data=cmd.to_dict())
+            Request("POST", self._cmd_url(guild_id=guild), json=cmd.to_dict())
         )
 
         return Cmd.from_dict(r.json())
 
-    def edit_command(self, cmd: Cmd, guild: int = None) -> Cmd:
+    def edit_command(self, cmd: Union[Cmd, CmdClass], guild: int = None) -> Cmd:
         """ Edit a global or guild application command. """
+
+        if not isinstance(cmd, Cmd):
+            cmd = cmd.to_application_command()
 
         if cmd.id is None:
             # creating a command with a name that already exist, overwrites the old one
             return self.create_command(cmd)
 
         r = self._send(
-            Request("PATCH", self._cmd_url(cmd.id, guild), data=cmd.to_dict())
+            Request("PATCH", self._cmd_url(cmd.id, guild), json=cmd.to_dict())
         )
 
         return Cmd.from_dict(r.json())
@@ -132,13 +151,13 @@ class InteractionClient(_BaseClient):
             self._interaction,
         )
 
-        self._send(Request("POST", url, data=resp.to_dict()))
+        self._send(Request("POST", url, json=resp.to_dict()))
 
     def edit_response(self, data: InteractionApplicationCommandCallbackData):
         """ Edit the initial Interaction response. """
 
         self._send(
-            Request("PATCH", self._url("messages/@original"), data=data.to_dict())
+            Request("PATCH", self._url("messages/@original"), json=data.to_dict())
         )
 
     def delete_response(self):
@@ -149,12 +168,12 @@ class InteractionClient(_BaseClient):
     def create_message(self, msg: FollowupMessage):
         """ Create a followup message for an Interaction. """
 
-        self._send(Request("POST", self._url(), data=msg.to_dict()))
+        self._send(Request("POST", self._url(), json=msg.to_dict()))
 
     def edit_message(self, msg_id: int, msg: FollowupMessage):
         """ Edit a followup message for an Interaction. """
 
-        self._send(Request("PATCH", self._url("messages", msg_id), data=msg.to_dict()))
+        self._send(Request("PATCH", self._url("messages", msg_id), json=msg.to_dict()))
 
     def delete_message(self, msg_id: int):
         """ Delete a followup message for an Interaction. """

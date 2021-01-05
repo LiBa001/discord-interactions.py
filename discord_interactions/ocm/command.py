@@ -33,7 +33,7 @@ from discord_interactions import (
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
 )
-from typing import List, Union
+from typing import List, Union, Type
 from dataclasses import dataclass
 from enum import Enum
 
@@ -87,7 +87,7 @@ class Option(_Option, metaclass=OptionContainerType):
     name: str = None
     default: bool = False
     required: bool = False
-    choices: OptionChoices = None
+    choices: Type[OptionChoices] = None
     __data: ApplicationCommandInteractionDataOption = None
     __data_loaded: bool = False
 
