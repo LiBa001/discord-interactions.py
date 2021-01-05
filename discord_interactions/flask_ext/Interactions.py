@@ -33,9 +33,10 @@ from discord_interactions import (
     InteractionApplicationCommandCallbackData,
     verify_key,
     ApplicationCommand,
+    ApplicationClient,
 )
 from discord_interactions import ocm
-from typing import Callable, Union, Type, Dict, List, Any
+from typing import Callable, Union, Type, Dict, List
 
 
 _CommandCallback = Callable[
@@ -58,6 +59,12 @@ class Interactions:
         """ All registered application commands """
 
         return list(self._commands.values())
+
+    def create_commands(self, client: ApplicationClient, guild: int = None):
+        """ Create all registered commands as application commands at Discord. """
+
+        for cmd in self.commands:
+            client.create_command(cmd, guild=guild)
 
     def _verify_request(self):
         signature = request.headers.get("X-Signature-Ed25519")
