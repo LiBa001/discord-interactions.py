@@ -18,11 +18,38 @@ class OptionChoices(Enum):
         return choices
 
 
+class _Option:
+    pass
+
+
+class OptionContainerType(type):
+    def __new__(mcs, name, bases, attributes):
+        cls = super(OptionContainerType, mcs).__new__(mcs, name, bases, attributes)
+
+        for attr_name, attr in attributes.items():
+            if isinstance(attr, _Option):
+                # set option name to attribute name where not explicitly set
+                if attr.name is None:
+                    attr.name = attr_name
+
+                # set option type based on type annotations where not explicitly set
+                if attr.type is None:
+                    attr.type = ApplicationCommandOptionType.STRING  # use string as default option type
+                    if cls.__annotations__:
+                        _type = cls.__annotations__.get(attr_name)
+                        if isinstance(_type, ApplicationCommandOptionType):
+                            attr.type = _type
+                        elif _type == int:
+                            attr.type = ApplicationCommandOptionType.INTEGER
+
+        return cls
+
+
 @dataclass()
-class Option:
-    type: ApplicationCommandOptionType
-    name: str
+class Option(_Option, metaclass=OptionContainerType):
     description: str
+    type: ApplicationCommandOptionType = None
+    name: str = None
     default: bool = False
     required: bool = False
     choices: OptionChoices = None
@@ -72,7 +99,24 @@ class Option:
         )
 
 
-class Command:
+class CommandType(OptionContainerType):
+    def __new__(mcs, *args, **kwargs):
+        cls = super(CommandType, mcs).__new__(mcs, *args, **kwargs)
+
+        # abort if it's a class in this module (the `Command` class itself and not a subclass)
+        if cls.__module__ == __name__:
+            return cls
+
+        if cls.__cmd_name__ is None:
+            cls.__cmd_name__ = cls.__name__.lower().strip("_")
+
+        if cls.__cmd_description__ is None and cls.__doc__ is not None:
+            cls.__cmd_description__ = cls.__doc__.strip()
+
+        return cls
+
+
+class Command(metaclass=CommandType):
     """ Represents a Discord Slash Command in the Object-Command-Mapper (OCM). """
 
     __cmd_name__ = None
