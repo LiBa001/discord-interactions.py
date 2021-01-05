@@ -110,9 +110,12 @@ class Option(_Option, metaclass=OptionContainerType):
                 if not isinstance(self, owner)
                 else instance.__data
             )
-            option = data.get_option(self.name)
 
-            return option if self.choices is None else self.choices(option.value)
+            if (option := data.get_option(self.name)) is not None:
+                value = option.value
+                return value if self.choices is None else self.choices(value)
+            else:
+                return None
 
         if not self.__data_loaded:
             if isinstance(self, owner):
