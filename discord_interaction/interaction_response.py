@@ -1,6 +1,14 @@
 from enum import Enum
-from typing import List
-from discord import Embed, AllowedMentions
+from typing import List, Protocol
+
+
+class DictConvertible(Protocol):
+    """
+    Represents a generic dictionary convertible object type that can be implemented elsewhere.
+    E.g. discord.py's `discord.Embed` or `discord.AllowedMentions` implements this.
+    """
+
+    def to_dict(self) -> dict: ...
 
 
 class InteractionResponseType(Enum):
@@ -16,8 +24,8 @@ class InteractionApplicationCommandCallbackData:
             self,
             content: str,
             tts: bool = False,
-            embeds: List[Embed] = None,
-            allowed_mentions: AllowedMentions = None
+            embeds: List[DictConvertible] = None,
+            allowed_mentions: DictConvertible = None
     ):
         self.content = content
         self.tts = tts
@@ -26,7 +34,7 @@ class InteractionApplicationCommandCallbackData:
 
     def to_dict(self) -> dict:
         data = {
-            "content": self.content,
+            "content": str(self.content),
             "tts": self.tts
         }
 

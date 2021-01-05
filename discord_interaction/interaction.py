@@ -34,6 +34,12 @@ class ApplicationCommandInteractionDataOption(_OptionGetter):
         self.value = kwargs.get("value")
         self.options = [ApplicationCommandInteractionDataOption(**option) for option in kwargs.get("options", [])]
 
+    def __str__(self):
+        return str(self.value)
+
+    def __int__(self):
+        return int(self.value)
+
 
 class ApplicationCommandInteractionData(_OptionGetter):
     def __init__(self, **kwargs):

@@ -25,8 +25,8 @@ setup(
         'Topic :: Software Development :: Libraries'
     ],
     python_requires='>=3.8',
-    install_requires=['discord.py >=1,<2', 'flask', 'pynacl'],
+    install_requires=['flask', 'pynacl'],
     keywords='discord discord-py discord-bot wrapper',
-    packages=find_packages(exclude=["examples"]),
+    packages=find_packages(exclude=["examples", "tests"]),
     data_files=None
 )

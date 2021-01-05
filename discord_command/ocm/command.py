@@ -38,14 +38,14 @@ class Option:
 
     def __get__(self, instance: Union["Command", "Option"], owner):
         if not self.is_sub_command:
-            data = instance.__interaction.data if not isinstance(self, owner) else instance.__data
+            data = getattr(instance, "_Command__interaction").data if not isinstance(self, owner) else instance.__data
             return data.get_option(self.name)
 
         if not self.__data_loaded:
             if isinstance(self, owner):
                 self.__data = instance.__data.get_option(self.name)
             else:
-                self.__data = instance.__interaction.data.get_option(self.name)
+                self.__data = getattr(instance, "_Command__interaction").data.get_option(self.name)
             self.__data_loaded = True
         return self.__data
 

@@ -18,16 +18,20 @@ class Interactions:
         self._commands: Dict[str, ApplicationCommand] = {}
         self._callbacks: Dict[str, _CommandCallback] = {}
 
-    def _main(self):
-        # Verify request
+    def _verify_request(self):
         signature = request.headers.get("X-Signature-Ed25519")
         timestamp = request.headers.get("X-Signature-Timestamp")
 
-        if (
-                signature is None or timestamp is None or
-                not verify_key(request.data, signature, timestamp, self._public_key)
-        ):
-            return "Bad request signature", 401
+        if signature is None or timestamp is None:
+            return False
+
+        return verify_key(request.data, signature, timestamp, self._public_key)
+
+    def _main(self):
+        # Verify request
+        if not self._app.config["TESTING"]:
+            if not self._verify_request():
+                return "Bad request signature", 401
 
         # Handle interactions
         interaction = Interaction(**request.json)

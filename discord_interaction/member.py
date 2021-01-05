@@ -1,11 +1,33 @@
-from discord import UserFlags, PremiumType
-from discord.abc import Snowflake
-from discord.utils import snowflake_time
 from typing import List
 from datetime import datetime
+from enum import Enum
 
 
-class User(Snowflake):
+class UserFlags(Enum):
+    staff = 1
+    partner = 2
+    hypesquad = 4
+    bug_hunter = 8
+    mfa_sms = 16
+    premium_promo_dismissed = 32
+    hypesquad_bravery = 64
+    hypesquad_brilliance = 128
+    hypesquad_balance = 256
+    early_supporter = 512
+    team_user = 1024
+    system = 4096
+    has_unread_urgent_messages = 8192
+    bug_hunter_level_2 = 16384
+    verified_bot = 65536
+    verified_bot_developer = 131072
+
+
+class PremiumType(Enum):
+    nitro_classic = 1
+    nitro = 2
+
+
+class User:
     def __init__(self, **data):
         self.id = int(data["id"])
         self.username = data["username"]
@@ -32,10 +54,6 @@ class User(Snowflake):
     @staticmethod
     def _flags_to_int(flags: List[UserFlags]) -> int:
         return sum(map(lambda flag: flag.value, flags))
-
-    @property
-    def created_at(self):
-        return snowflake_time(self.id)
 
     def to_dict(self) -> dict:
         data = {
