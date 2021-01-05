@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from .interaction import \
     Interaction, InteractionType, ApplicationCommandInteractionData, ApplicationCommandInteractionDataOption
 
