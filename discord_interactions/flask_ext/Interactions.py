@@ -35,7 +35,7 @@ from discord_interactions import (
     ApplicationCommand,
 )
 from discord_interactions import ocm
-from typing import Callable, Union, Type, Dict, List
+from typing import Callable, Union, Type, Dict, List, Any
 
 
 _CommandCallback = Callable[
@@ -124,13 +124,17 @@ class Interactions:
 
     def command(
         self,
-        command: Union[ApplicationCommand, str] = None,
-        _f: _CommandCallback = None,
+        command: Union[ApplicationCommand, str, _CommandCallback] = None,
     ):
         """
         A decorator to register a slash command.
         Calls :meth:`register_command` internally.
         """
+
+        _f = None
+        if isinstance(command, Callable):
+            _f = command
+            command = None
 
         def decorator(f: _CommandCallback):
             if command is not None:

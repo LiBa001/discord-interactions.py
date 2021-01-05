@@ -109,7 +109,7 @@ So, the simplest possible example looks like this:
         message: str = Option("This will be echoed.", required=True)
 
 
-    @interactions.command()
+    @interactions.command
     def _echo(cmd: _Echo):
         return cmd.message
 

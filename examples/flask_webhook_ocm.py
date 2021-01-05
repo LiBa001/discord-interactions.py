@@ -13,7 +13,7 @@ class _Echo(Command):
     message: str = Option("This will be echoed.", required=True)
 
 
-@interactions.command()
+@interactions.command
 def _echo(cmd: _Echo):
     return cmd.message
 
