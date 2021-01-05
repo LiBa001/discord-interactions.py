@@ -4,12 +4,12 @@ with open('README.rst', 'r', encoding='utf-8') as f:
     readme = f.read()
 
 setup(
-    name='discord-interactions-wrapper',
+    name='discord-interactions.py',
     version='0.0.1',
-    description='A wrapper for the Discord Interactions API',
+    description='A library around the Discord Interactions API',
     long_description=readme,
     long_description_content_type='text/x-rst',
-    url='https://github.com/LiBa001/discord-interactions-wrapper',
+    url='https://github.com/LiBa001/discord-interactions.py',
     author='Linus Bartsch',
     author_email='pypi@libasoft.de',
     license='MIT',

@@ -1,12 +1,12 @@
 Discord Interactions
 ====================
 
-.. image:: https://badge.fury.io/py/discord-interactions-wrapper.svg
-    :target: https://pypi.org/project/discord-interactions-wrapper
+.. image:: https://badge.fury.io/py/discord-interactions.py.svg
+    :target: https://pypi.org/project/discord-interactions.py
     :alt: PyPI
 
-.. image:: https://img.shields.io/github/license/LiBa001/discord-interactions-wrapper
-    :target: https://github.com/LiBa001/discord-interactions-wrapper/blob/master/LICENSE
+.. image:: https://img.shields.io/github/license/LiBa001/discord-interactions.py
+    :target: https://github.com/LiBa001/discord-interactions.py/blob/master/LICENSE
     :alt: License
 
 
@@ -20,9 +20,9 @@ Installation
 Requires Python 3.8+
 
 * latest release from PyPI_ using *pip*:
-    ``pip install discord-interactions-wrapper``
+    ``pip install discord-interactions.py``
 * latest commit from GitHub using *pip* and *git*:
-    ``pip install git+https://github.com/LiBa001/discord-interactions-wrapper.git``
+    ``pip install git+https://github.com/LiBa001/discord-interactions.py``
 
     .. note::
 
