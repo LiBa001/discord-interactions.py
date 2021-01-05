@@ -72,31 +72,11 @@ class Option:
         )
 
 
-class _BaseCommand:
-    """ The base for both commands and sub-commands. """
+class Command:
+    """ Represents a Discord Slash Command in the Object-Command-Mapper (OCM). """
 
     __cmd_name__ = None
     __cmd_description__ = None
-
-    def __wrap_options__(self, options: List[ApplicationCommandInteractionDataOption]):  # TODO: may be removed
-        cls = self.__class__
-
-        options = {option.name: option for option in options}
-
-        for opt_name in cls.__annotations__:
-            option = options.get(opt_name)
-
-            if option is None:
-                opt_value = cls.__dict__[opt_name]  # needs default value when optional
-            elif (opt_value := option.value) is None:
-                sub = cls.__dict__.get(opt_name)  # get the defined sub-command or sub-command-group
-                opt_value = sub.__wrap_options__(option.options) if sub is not None else option.options
-
-            setattr(self, opt_name, opt_value)
-
-
-class Command(_BaseCommand):
-    """ Represents a Discord Slash Command in the Object-Command-Mapper (OCM). """
 
     __interaction: Interaction = None
 
@@ -141,13 +121,3 @@ class Command(_BaseCommand):
             description=cls.__cmd_description__,
             options=options or None
         )
-
-
-# class SubCommand(_BaseCommand):  # TODO: may be removed
-#     """ Represents a sub-command of :class:`Command`. """
-#
-#     @classmethod
-#     def wrap(cls, options: List[ApplicationCommandInteractionDataOption]):
-#         inst = cls()
-#         inst.__wrap_options__(options)
-#         return inst
