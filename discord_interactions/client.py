@@ -29,7 +29,11 @@ from typing import List
 
 from .application_command import ApplicationCommand as Cmd
 from .interaction import Interaction
-from .interaction_response import InteractionResponse, InteractionApplicationCommandCallbackData, FollowupMessage
+from .interaction_response import (
+    InteractionResponse,
+    InteractionApplicationCommandCallbackData,
+    FollowupMessage,
+)
 
 API_BASE_URL = "https://discord.com/api/v8/"
 
@@ -130,7 +134,7 @@ class InteractionClient(_BaseClient):
 
         self._send(Request("POST", url, data=resp.to_dict()))
 
-    def edit_response(self, data: InteractionResponse):
+    def edit_response(self, data: InteractionApplicationCommandCallbackData):
         """ Edit the initial Interaction response. """
 
         self._send(

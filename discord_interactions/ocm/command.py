@@ -170,7 +170,6 @@ class Command(metaclass=CommandType):
     def wrap(cls, interaction: Interaction):
         inst = cls()
         inst.__interaction = interaction
-        # inst.__wrap_options__(interaction.data.options)
         return inst
 
     @property
