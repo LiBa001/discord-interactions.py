@@ -26,14 +26,21 @@ SOFTWARE.
 
 from flask import Flask, request, jsonify
 from discord_interactions import (
-    Interaction, InteractionType, InteractionResponse, InteractionResponseType,
-    InteractionApplicationCommandCallbackData, verify_key, ApplicationCommand
+    Interaction,
+    InteractionType,
+    InteractionResponse,
+    InteractionResponseType,
+    InteractionApplicationCommandCallbackData,
+    verify_key,
+    ApplicationCommand,
 )
 from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict
 
 
-_CommandCallback = Callable[[Union[Interaction, ocm.Command]], Union[InteractionResponse, str, None]]
+_CommandCallback = Callable[
+    [Union[Interaction, ocm.Command]], Union[InteractionResponse, str, None]
+]
 
 
 class Interactions:
@@ -87,7 +94,7 @@ class Interactions:
             else:
                 interaction_response = InteractionResponse(
                     response_type=InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-                    data=InteractionApplicationCommandCallbackData(content=str(resp))
+                    data=InteractionApplicationCommandCallbackData(content=str(resp)),
                 )
 
             return jsonify(interaction_response.to_dict())
@@ -95,7 +102,11 @@ class Interactions:
         else:
             return "Unknown interaction type", 501
 
-    def register_command(self, command: Union[ApplicationCommand, Type[ocm.Command], str], callback: _CommandCallback):
+    def register_command(
+        self,
+        command: Union[ApplicationCommand, Type[ocm.Command], str],
+        callback: _CommandCallback,
+    ):
         if isinstance(command, ApplicationCommand):
             self._commands[command.name] = command
             self._callbacks[command.name] = callback
@@ -105,14 +116,23 @@ class Interactions:
         else:
             self._callbacks[command] = callback
 
-    def command(self, command: Union[ApplicationCommand, str] = None, _f: _CommandCallback = None):
-        """ A decorator to register a slash command. Calls :meth:`register_command` internally. """
+    def command(
+        self,
+        command: Union[ApplicationCommand, str] = None,
+        _f: _CommandCallback = None,
+    ):
+        """
+        A decorator to register a slash command.
+        Calls :meth:`register_command` internally.
+        """
 
         def decorator(f: _CommandCallback):
             if command is not None:
                 self.register_command(command, f)
             elif len(annotations := f.__annotations__.values()) > 0:
-                _command = next(iter(annotations))  # get :class:`ocm.Command` from type annotation
+                _command = next(
+                    iter(annotations)
+                )  # get :class:`ocm.Command` from type annotation
                 self.register_command(_command, f)
             else:
                 self.register_command(f.__name__.lower().strip("_"), f)

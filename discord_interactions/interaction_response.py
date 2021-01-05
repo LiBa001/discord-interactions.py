@@ -30,11 +30,13 @@ from typing import List, Protocol
 
 class DictConvertible(Protocol):
     """
-    Represents a generic dictionary convertible object type that can be implemented elsewhere.
+    Represents a generic dictionary convertible object type
+    that can be implemented elsewhere.
     E.g. discord.py's `discord.Embed` or `discord.AllowedMentions` implements this.
     """
 
-    def to_dict(self) -> dict: ...
+    def to_dict(self) -> dict:
+        ...
 
 
 class InteractionResponseType(Enum):
@@ -47,11 +49,11 @@ class InteractionResponseType(Enum):
 
 class InteractionApplicationCommandCallbackData:
     def __init__(
-            self,
-            content: str,
-            tts: bool = False,
-            embeds: List[DictConvertible] = None,
-            allowed_mentions: DictConvertible = None
+        self,
+        content: str,
+        tts: bool = False,
+        embeds: List[DictConvertible] = None,
+        allowed_mentions: DictConvertible = None,
     ):
         self.content = content
         self.tts = tts
@@ -59,10 +61,7 @@ class InteractionApplicationCommandCallbackData:
         self.allowed_mentions = allowed_mentions
 
     def to_dict(self) -> dict:
-        data = {
-            "content": str(self.content),
-            "tts": self.tts
-        }
+        data = {"content": str(self.content), "tts": self.tts}
 
         if self.embeds:
             data["embeds"] = [embed.to_dict() for embed in self.embeds]
@@ -73,7 +72,11 @@ class InteractionApplicationCommandCallbackData:
 
 
 class InteractionResponse:
-    def __init__(self, response_type: InteractionResponseType, data: InteractionApplicationCommandCallbackData = None):
+    def __init__(
+        self,
+        response_type: InteractionResponseType,
+        data: InteractionApplicationCommandCallbackData = None,
+    ):
         self.type = response_type
         self.data = data
 

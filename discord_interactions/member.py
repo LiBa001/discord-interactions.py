@@ -86,7 +86,7 @@ class User:
         data = {
             "id": str(self.id),
             "username": self.username,
-            "discriminator": self.discriminator
+            "discriminator": self.discriminator,
         }
 
         if self.avatar:

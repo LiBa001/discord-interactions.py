@@ -46,10 +46,7 @@ class ApplicationCommandOptionChoice:
     value: Union[str, int]
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "value": self.value
-        }
+        return {"name": self.name, "value": self.value}
 
 
 @dataclass()
@@ -65,8 +62,13 @@ class ApplicationCommandOption:
     @classmethod
     def from_dict(cls, data) -> "ApplicationCommandOption":
         option_type = ApplicationCommandOptionType(data.pop("type"))
-        data["choices"] = [ApplicationCommandOptionChoice(**choice) for choice in data.get("choices", [])] or None
-        data["options"] = [cls.from_dict(option) for option in data.get("options", [])] or None
+        data["choices"] = [
+            ApplicationCommandOptionChoice(**choice)
+            for choice in data.get("choices", [])
+        ] or None
+        data["options"] = [
+            cls.from_dict(option) for option in data.get("options", [])
+        ] or None
         return cls(type=option_type, **data)
 
     def to_dict(self) -> dict:
@@ -75,7 +77,7 @@ class ApplicationCommandOption:
             "name": self.name,
             "description": self.description,
             "default": self.default,
-            "required": self.required
+            "required": self.required,
         }
 
         if self.choices:
@@ -87,7 +89,13 @@ class ApplicationCommandOption:
 
 
 class ApplicationCommand:
-    def __init__(self, name, description, options: List[ApplicationCommandOption] = None, **kwargs):
+    def __init__(
+        self,
+        name,
+        description,
+        options: List[ApplicationCommandOption] = None,
+        **kwargs
+    ):
         self.id = int(kwargs.get("id", 0)) or None
         self.application_id = int(kwargs.get("application_id", 0)) or None
         self.name = name
@@ -102,14 +110,14 @@ class ApplicationCommand:
 
     @classmethod
     def from_dict(cls, data) -> "ApplicationCommand":
-        data["options"] = [ApplicationCommandOption.from_dict(option) for option in data.get("options", [])] or None
+        data["options"] = [
+            ApplicationCommandOption.from_dict(option)
+            for option in data.get("options", [])
+        ] or None
         return cls(**data)
 
     def to_dict(self) -> dict:
-        data = {
-            "name": self.name,
-            "description": self.description
-        }
+        data = {"name": self.name, "description": self.description}
 
         if self.id:
             data["id"] = self.id

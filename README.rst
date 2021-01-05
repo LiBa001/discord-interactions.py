@@ -9,6 +9,9 @@ Discord Interactions
     :target: https://github.com/LiBa001/discord-interactions.py/blob/master/LICENSE
     :alt: License
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
+
 
 A wrapper for the Discord Interactions API that does not rely on websockets
 and can therefore be used in a stateless webhook environment.
@@ -40,8 +43,13 @@ The most API-like example with the flask extension is this:
 
     from discord_interactions.flask_ext import Interactions
     from discord_interactions import (
-        ApplicationCommand, ApplicationCommandOption, ApplicationCommandOptionType,
-        Interaction, InteractionResponse, InteractionResponseType, InteractionApplicationCommandCallbackData
+        ApplicationCommand,
+        ApplicationCommandOption,
+        ApplicationCommandOptionType,
+        Interaction,
+        InteractionResponse,
+        InteractionResponseType,
+        InteractionApplicationCommandCallbackData,
     )
     from flask import Flask
     import os
@@ -50,12 +58,14 @@ The most API-like example with the flask extension is this:
     interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
 
     echo_cmd = ApplicationCommand("echo", "what goes around comes around")
-    echo_cmd.add_option(ApplicationCommandOption(
-        type=ApplicationCommandOptionType.STRING,
-        name="message",
-        description="This will be echoed.",
-        required=True
-    ))
+    echo_cmd.add_option(
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name="message",
+            description="This will be echoed.",
+            required=True,
+        )
+    )
 
 
     @interactions.command(echo_cmd)
@@ -64,18 +74,20 @@ The most API-like example with the flask extension is this:
 
         return InteractionResponse(
             response_type=InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data=InteractionApplicationCommandCallbackData(content=msg)
+            data=InteractionApplicationCommandCallbackData(content=msg),
         )
 
-Here, we use the rudimentary ``ApplicationCommand``, ``Interaction`` and ``InteractionResponse`` classes,
-which are in their structure basically exact counterparts of the `original API models`__.
+Here, we use the rudimentary ``ApplicationCommand``, ``Interaction`` and
+``InteractionResponse`` classes, which are in their structure basically
+exact counterparts of the `original API models`__.
 
 __ https://discord.com/developers/docs/interactions/slash-commands#data-models-and-types
 
 This library provides another abstraction layer, though.
 Inspired by the concept of database ORMs_, it has an Object-Command Mapper (OCM)
-that lets you define a class for each command which will then serve as both a generic structural description of the
-command (like ``ApplicationCommand``) **and** a container for the actual data that is received
+that lets you define a class for each command which will then serve as both
+a generic structural description of the command (like ``ApplicationCommand``)
+**and** a container for the actual data that is received
 when the command is called (like ``Interaction``).
 
 So, the simplest possible example looks like this:

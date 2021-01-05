@@ -10,7 +10,7 @@ from discord_interactions import InteractionType
 def test_echo(app):
     """ Test the echo command. """
 
-    app.config['TESTING'] = True
+    app.config["TESTING"] = True
 
     msg = "this is a test message"
 
@@ -20,12 +20,7 @@ def test_echo(app):
         "data": {
             "id": "44444",
             "name": "echo",
-            "options": [
-                {
-                    "name": "message",
-                    "value": msg
-                }
-            ]
+            "options": [{"name": "message", "value": msg}],
         },
         "guild_id": "22222",
         "channel_id": "33333",
@@ -34,10 +29,10 @@ def test_echo(app):
             "roles": [],
             "joined_at": "2021-01-04T23:38:01.370760",
             "deaf": False,
-            "mute": False
+            "mute": False,
         },
         "token": "abc",
-        "version": 1
+        "version": 1,
     }
 
     with app.test_client() as client:

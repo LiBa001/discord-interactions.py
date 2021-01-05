@@ -38,7 +38,9 @@ class InteractionType(Enum):
 class _OptionGetter:
     options: list
 
-    def get_option(self, option_name: str) -> Union["ApplicationCommandInteractionDataOption", None]:
+    def get_option(
+        self, option_name: str
+    ) -> Union["ApplicationCommandInteractionDataOption", None]:
         """ Get option by name. """
 
         for option in self.options:
@@ -51,7 +53,10 @@ class ApplicationCommandInteractionDataOption(_OptionGetter):
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
         self.value = kwargs.get("value")
-        self.options = [ApplicationCommandInteractionDataOption(**option) for option in kwargs.get("options", [])]
+        self.options = [
+            ApplicationCommandInteractionDataOption(**option)
+            for option in kwargs.get("options", [])
+        ]
 
     def __str__(self):
         return str(self.value)
@@ -64,18 +69,22 @@ class ApplicationCommandInteractionData(_OptionGetter):
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
         self.name = kwargs["name"]
-        self.options = [ApplicationCommandInteractionDataOption(**option) for option in kwargs.get("options", [])]
+        self.options = [
+            ApplicationCommandInteractionDataOption(**option)
+            for option in kwargs.get("options", [])
+        ]
 
 
 INTERACTION_TYPE_MAP = {
     InteractionType.PING: type(None),
-    InteractionType.APPLICATION_COMMAND: ApplicationCommandInteractionData
+    InteractionType.APPLICATION_COMMAND: ApplicationCommandInteractionData,
 }
 
 
 class Interaction:
     """
-    This represents the base interaction type that gets invoked for Slash Commands and future interaction types.
+    This represents the base interaction type that gets invoked for Slash Commands
+    and future interaction types.
     """
 
     def __init__(self, **kwargs):
