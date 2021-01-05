@@ -3,7 +3,7 @@ from flask import Response
 
 from examples import flask_webhook, flask_webhook_ocm
 
-from discord_interaction import InteractionType
+from discord_interactions import InteractionType
 
 
 @pytest.mark.parametrize("app", [flask_webhook.app, flask_webhook_ocm.app])

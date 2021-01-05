@@ -1,5 +1,4 @@
-from discord_interaction.utils import verify_key
-from discord_interaction import InteractionType, InteractionResponseType
+from discord_interactions import InteractionType, InteractionResponseType, verify_key
 from flask import request, jsonify
 from functools import wraps
 

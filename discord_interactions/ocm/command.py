@@ -1,5 +1,5 @@
-from discord_interaction import Interaction, Member, ApplicationCommandInteractionDataOption
-from discord_command import (
+from discord_interactions import (
+    Interaction, Member, ApplicationCommandInteractionDataOption,
     ApplicationCommand, ApplicationCommandOption, ApplicationCommandOptionType, ApplicationCommandOptionChoice
 )
 from typing import List, Union

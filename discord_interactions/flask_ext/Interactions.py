@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify
-from discord_interaction import Interaction, InteractionType, InteractionResponse, InteractionResponseType
-from discord_interaction.utils import verify_key
-from discord_command import ApplicationCommand, ocm
+from discord_interactions import (
+    Interaction, InteractionType, InteractionResponse, InteractionResponseType, verify_key, ApplicationCommand
+)
+from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict
 
 

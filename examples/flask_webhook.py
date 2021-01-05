@@ -1,6 +1,6 @@
-from discord_flask import Interactions
-from discord_command import ApplicationCommand, ApplicationCommandOption, ApplicationCommandOptionType
-from discord_interaction import (
+from discord_interactions.flask_ext import Interactions
+from discord_interactions import (
+    ApplicationCommand, ApplicationCommandOption, ApplicationCommandOptionType,
     Interaction, InteractionResponse, InteractionResponseType, InteractionApplicationCommandCallbackData
 )
 from flask import Flask
