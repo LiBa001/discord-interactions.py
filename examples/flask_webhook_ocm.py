@@ -1,5 +1,4 @@
 from discord_interactions.flask_ext import Interactions
-from discord_interactions import InteractionResponse, InteractionResponseType, InteractionApplicationCommandCallbackData
 from discord_interactions.ocm import Command, Option
 from flask import Flask
 import os
@@ -16,12 +15,7 @@ class _Echo(Command):
 
 @interactions.command()
 def _echo(cmd: _Echo):
-    msg = cmd.message
-
-    return InteractionResponse(
-        response_type=InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data=InteractionApplicationCommandCallbackData(content=msg)
-    )
+    return cmd.message
 
 
 if __name__ == "__main__":

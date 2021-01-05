@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
 from discord_interactions import (
-    Interaction, InteractionType, InteractionResponse, InteractionResponseType, verify_key, ApplicationCommand
+    Interaction, InteractionType, InteractionResponse, InteractionResponseType,
+    InteractionApplicationCommandCallbackData, verify_key, ApplicationCommand
 )
 from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict
 
 
-_CommandCallback = Callable[[Union[Interaction, ocm.Command]], InteractionResponse]
+_CommandCallback = Callable[[Union[Interaction, ocm.Command]], Union[InteractionResponse, str, None]]
 
 
 class Interactions:
@@ -49,7 +50,22 @@ class Interactions:
                 if issubclass(cmd_type, ocm.Command):
                     cb_data = cmd_type.wrap(interaction)
 
-            return jsonify(cb(cb_data).to_dict())
+            resp = cb(cb_data)
+
+            if isinstance(resp, InteractionResponse):
+                interaction_response = resp
+            elif resp is None:
+                interaction_response = InteractionResponse(
+                    response_type=InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE
+                )
+            else:
+                interaction_response = InteractionResponse(
+                    response_type=InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                    data=InteractionApplicationCommandCallbackData(content=str(resp))
+                )
+
+            return jsonify(interaction_response.to_dict())
+
         else:
             return "Unknown interaction type", 501
 
@@ -69,8 +85,10 @@ class Interactions:
         def decorator(f: _CommandCallback):
             if command is not None:
                 self.register_command(command, f)
-            else:
-                _command = next(iter(f.__annotations__.values()))  # get :class:`ocm.Command` from type annotation
+            elif len(annotations := f.__annotations__.values()) > 0:
+                _command = next(iter(annotations))  # get :class:`ocm.Command` from type annotation
                 self.register_command(_command, f)
+            else:
+                self.register_command(f.__name__.lower().strip("_"), f)
 
         return decorator(_f) if _f is not None else decorator
