@@ -19,9 +19,9 @@ Installation
 
 Requires Python 3.8+
 
- * latest release from PyPI_ using *pip*:
+* latest release from PyPI_ using *pip*:
     ``pip install discord-interactions-wrapper``
- * latest commit from GitHub using *pip* and *git*:
+* latest commit from GitHub using *pip* and *git*:
     ``pip install git+https://github.com/LiBa001/discord-interactions-wrapper.git``
 
     .. note::
