@@ -202,6 +202,10 @@ class Command(metaclass=CommandType):
     def command_id(self) -> int:
         return self.__interaction.data.id
 
+    @property
+    def token(self) -> str:
+        return self.__interaction.token
+
     @classmethod
     def to_application_command(cls) -> ApplicationCommand:
         options = []
