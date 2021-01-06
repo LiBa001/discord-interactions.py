@@ -12,6 +12,9 @@ Discord Interactions
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/psf/black
 
+.. image:: https://github.com/LiBa001/discord-interactions.py/workflows/Python%20package/badge.svg
+    :target: https://github.com/LiBa001/discord-interactions.py/actions
+
 
 A wrapper for the Discord Interactions API that does not rely on websockets
 and can therefore be used in a stateless webhook environment.
