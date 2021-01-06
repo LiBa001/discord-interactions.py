@@ -13,31 +13,40 @@ test_data = [
     (
         {
             "id": "44444",
+            "name": "ping",
+            "options": [],
+        },
+        {
+            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "data": {"content": "pong"},
+        },
+    ),
+    (
+        {
+            "id": "44444",
             "name": "echo",
             "options": [{"name": "message", "value": "this is a test message"}],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": "this is a test message",
-            }
+            },
         },
     ),
     (
         {
             "id": "44444",
             "name": "rps",
-            "options": [
-                {"name": "symbol", "value": "paper"}
-            ],
+            "options": [{"name": "symbol", "value": "paper"}],
         },
         {
             "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
-            }
+            },
         },
-    )
+    ),
 ]
 
 

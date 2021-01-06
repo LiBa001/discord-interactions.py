@@ -8,7 +8,11 @@ app = Flask(__name__)
 interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
 
 
-class _Echo(Command):
+class Ping(Command):
+    """ simple ping command """
+
+
+class Echo(Command):
     """ what goes around comes around """
 
     message: str = Option("This will be echoed.", required=True)
@@ -27,11 +31,16 @@ class RPS(Command):
 
 
 @interactions.command
-def _echo(cmd: _Echo):
-    return cmd.message
+def ping(_: Ping):
+    return "pong"
 
 
-@interactions.command()
+@interactions.command
+def echo(cmd: Echo):
+    return cmd.message, False
+
+
+@interactions.command
 def rps(cmd: RPS):
     choice = random.choice(list(RPSSymbol))
 

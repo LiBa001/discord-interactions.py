@@ -5,9 +5,6 @@ from discord_interactions import (
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
     Interaction,
-    InteractionResponse,
-    InteractionResponseType,
-    InteractionApplicationCommandCallbackData,
 )
 from flask import Flask
 import os
@@ -26,29 +23,38 @@ echo_cmd.add_option(
     )
 )
 
-rps_cmd = ApplicationCommand("rps", "Play Rock, Paper, Scissors!", options=[
-    ApplicationCommandOption(
-        type=ApplicationCommandOptionType.STRING,
-        name="symbol",
-        description="rock, paper or scissors",
-        required=True,
-        choices=[
-            ApplicationCommandOptionChoice("ROCK", "rock"),
-            ApplicationCommandOptionChoice("PAPER", "paper"),
-            ApplicationCommandOptionChoice("SCISSORS", "scissors"),
-        ],
-    )
-])
+rps_cmd = ApplicationCommand(
+    "rps",
+    "Play Rock, Paper, Scissors!",
+    [
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name="symbol",
+            description="rock, paper or scissors",
+            required=True,
+            choices=[
+                ApplicationCommandOptionChoice("ROCK", "rock"),
+                ApplicationCommandOptionChoice("PAPER", "paper"),
+                ApplicationCommandOptionChoice("SCISSORS", "scissors"),
+            ],
+        )
+    ],
+)
+
+
+# Note that only a name is provided here,
+# so for this command only the callback gets registered.
+# This cannot be used to register the slash command at Discord.
+@interactions.command("ping")
+def ping(_: Interaction):
+    return "pong"
 
 
 @interactions.command(echo_cmd)
-def _echo(interaction: Interaction):
+def echo(interaction: Interaction):
     msg = interaction.data.options[0].value  # "message" option content
 
-    return InteractionResponse(
-        response_type=InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data=InteractionApplicationCommandCallbackData(content=msg),
-    )
+    return msg, False
 
 
 @interactions.command(rps_cmd)

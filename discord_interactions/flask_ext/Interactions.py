@@ -36,11 +36,12 @@ from discord_interactions import (
     ApplicationClient,
 )
 from discord_interactions import ocm
-from typing import Callable, Union, Type, Dict, List
+from typing import Callable, Union, Type, Dict, List, Tuple, Optional
 
 
 _CommandCallback = Callable[
-    [Union[Interaction, ocm.Command]], Union[InteractionResponse, str, None]
+    [Union[Interaction, ocm.Command]],
+    Union[InteractionResponse, str, None, Tuple[Optional[str], bool]],
 ]
 
 
@@ -100,14 +101,29 @@ class Interactions:
 
             if isinstance(resp, InteractionResponse):
                 interaction_response = resp
-            elif resp is None:
-                interaction_response = InteractionResponse(
-                    response_type=InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE
-                )
             else:
+                # figure out what the response should look like
+                with_source = True
+
+                if isinstance(resp, tuple):
+                    resp, with_source = resp
+
+                if resp is None:
+                    r_data = None
+                    if with_source:
+                        r_type = InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE
+                    else:
+                        r_type = InteractionResponseType.ACKNOWLEDGE
+                else:
+                    r_data = InteractionApplicationCommandCallbackData(str(resp))
+                    if with_source:
+                        r_type = InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE
+                    else:
+                        r_type = InteractionResponseType.CHANNEL_MESSAGE
+
                 interaction_response = InteractionResponse(
-                    response_type=InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-                    data=InteractionApplicationCommandCallbackData(content=str(resp)),
+                    response_type=r_type,
+                    data=r_data,
                 )
 
             return jsonify(interaction_response.to_dict())
@@ -120,14 +136,19 @@ class Interactions:
         command: Union[ApplicationCommand, Type[ocm.Command], str],
         callback: _CommandCallback,
     ):
-        if isinstance(command, ApplicationCommand):
+        if isinstance(command, str):
+            self._callbacks[command] = callback
+        elif isinstance(command, ApplicationCommand):
             self._commands[command.name] = command
             self._callbacks[command.name] = callback
         elif issubclass(command, ocm.Command):
             self._commands[command.__cmd_name__] = command.to_application_command()
             self._callbacks[command.__cmd_name__] = callback
         else:
-            self._callbacks[command] = callback
+            TypeError(
+                "'command' must be 'str', 'ApplicationCommand'"
+                + "or subclass of 'ocm.Command'"
+            )
 
     def command(
         self,
