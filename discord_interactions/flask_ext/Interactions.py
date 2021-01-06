@@ -122,7 +122,7 @@ class Interactions:
                         r_type = InteractionResponseType.CHANNEL_MESSAGE
 
                 interaction_response = InteractionResponse(
-                    response_type=r_type,
+                    type=r_type,
                     data=r_data,
                 )
 

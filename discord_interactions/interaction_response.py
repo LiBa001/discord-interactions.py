@@ -68,14 +68,10 @@ class InteractionApplicationCommandCallbackData:
         return data
 
 
+@dataclass()
 class InteractionResponse:
-    def __init__(
-        self,
-        response_type: InteractionResponseType,
-        data: InteractionApplicationCommandCallbackData = None,
-    ):
-        self.type = response_type
-        self.data = data
+    type: InteractionResponseType
+    data: InteractionApplicationCommandCallbackData = None
 
     def to_dict(self) -> dict:
         response = {"type": self.type.value}
@@ -86,6 +82,7 @@ class InteractionResponse:
         return response
 
 
+@dataclass()
 class FollowupMessage:
     content: str = None
     username: str = None
