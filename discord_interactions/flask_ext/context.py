@@ -24,7 +24,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord_interactions import InteractionClient, Interaction, InteractionResponse
+from discord_interactions import (
+    InteractionClient,
+    Interaction,
+    InteractionResponse,
+    FollowupMessage,
+)
 
 
 class CommandContext:
@@ -66,3 +71,8 @@ class AfterCommandContext(CommandContext):
             raise AttributeError("'app_id' needs to be provided for the client to work")
 
         return self._client
+
+    def send(self, msg: str, tts: bool = False):
+        followup_msg = FollowupMessage(content=msg, tts=tts)
+
+        self.client.create_message(followup_msg)

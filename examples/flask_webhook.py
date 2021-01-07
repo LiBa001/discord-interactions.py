@@ -1,4 +1,4 @@
-from discord_interactions.flask_ext import Interactions
+from discord_interactions.flask_ext import Interactions, AfterCommandContext
 from discord_interactions import (
     ApplicationCommand,
     ApplicationCommandOption,
@@ -90,7 +90,7 @@ def delay(_: Interaction):
 
 
 @delay.after_command
-def after_delay(ctx):
+def after_delay(ctx: AfterCommandContext):
     delay_time = ctx.interaction.data.options[0].value
     time.sleep(delay_time)
     ctx.send(f"{delay_time} seconds have passed")
