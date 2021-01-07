@@ -78,8 +78,6 @@ class Interactions:
         app.after_request_funcs = {None: [self._after_request]}
 
         self._commands: Dict[str, CommandData] = {}
-        # self._commands: Dict[str, ApplicationCommand] = {}
-        # self._callbacks: Dict[str, _CommandCallback] = {}
 
     @property
     def path(self) -> str:
