@@ -1,4 +1,4 @@
-from discord_interactions.flask_ext import Interactions
+from discord_interactions.flask_ext import Interactions, AfterCommandContext
 from discord_interactions import (
     ApplicationCommand,
     ApplicationCommandOption,
@@ -9,6 +9,7 @@ from discord_interactions import (
 from flask import Flask
 import os
 import random
+import time
 
 app = Flask(__name__)
 interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
@@ -81,6 +82,18 @@ def rps(interaction: Interaction):
             msg = "You cut me and win!"
 
     return f"I took {choice}. {msg}"
+
+
+@interactions.command("delay")
+def delay(_: Interaction):
+    return None
+
+
+@delay.after_command
+def after_delay(ctx: AfterCommandContext):
+    delay_time = ctx.interaction.data.options[0].value
+    time.sleep(delay_time)
+    ctx.send(f"{delay_time} seconds have passed")
 
 
 if __name__ == "__main__":

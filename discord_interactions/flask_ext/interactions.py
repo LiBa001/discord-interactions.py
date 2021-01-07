@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, g
 from discord_interactions import (
     Interaction,
     InteractionType,
@@ -38,23 +38,46 @@ from discord_interactions import (
 from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict, List, Tuple, Optional
 
+from .context import AfterCommandContext
+
 
 _CommandCallback = Callable[
     [Union[Interaction, ocm.Command]],
     Union[InteractionResponse, str, None, Tuple[Optional[str], bool]],
 ]
+_AfterCommandCallback = Callable[[AfterCommandContext], None]
+
+
+class CommandData:
+    def __init__(self, name: str, cb: _CommandCallback, cmd: ApplicationCommand = None):
+        self.name = name
+        self.callback = cb
+        self.application_command = cmd
+        self.after_callback = None
+
+    def after_command(self, f: _AfterCommandCallback):
+        """
+        A decorator to register a function that gets called after a command has run.
+        The function will be internally called from within Flask's `after_request`
+        function.
+        """
+
+        self.after_callback = f
 
 
 class Interactions:
-    def __init__(self, app: Flask, public_key: str, path: str = "/"):
+    def __init__(
+        self, app: Flask, public_key: str, app_id: int = None, path: str = "/"
+    ):
         self._app = app
         self._public_key = public_key
+        self._app_id = app_id
         self._path = path
 
         app.add_url_rule(path, "interactions", self._main, methods=["POST"])
+        app.after_request_funcs = {None: [self._after_request]}
 
-        self._commands: Dict[str, ApplicationCommand] = {}
-        self._callbacks: Dict[str, _CommandCallback] = {}
+        self._commands: Dict[str, CommandData] = {}
 
     @property
     def path(self) -> str:
@@ -64,7 +87,7 @@ class Interactions:
     def commands(self) -> List[ApplicationCommand]:
         """ All registered application commands """
 
-        return list(self._commands.values())
+        return [cmd.application_command for cmd in self._commands.values()]
 
     def create_commands(self, client: ApplicationClient, guild: int = None):
         """ Create all registered commands as application commands at Discord. """
@@ -94,7 +117,7 @@ class Interactions:
             return jsonify(InteractionResponse(InteractionResponseType.PONG).to_dict())
         elif interaction.type == InteractionType.APPLICATION_COMMAND:
             cmd = interaction.data.name
-            cb = self._callbacks[cmd]
+            cb = self._commands[cmd].callback
 
             cb_data = interaction
             if len(annotations := cb.__annotations__.values()) > 0:
@@ -131,37 +154,66 @@ class Interactions:
                     data=r_data,
                 )
 
+            g.interaction = interaction
+            g.interaction_response = interaction_response
+
             return jsonify(interaction_response.to_dict())
 
         else:
             return "Unknown interaction type", 501
 
+    def _after_request(self, response: Response):
+        interaction = g.interaction
+        interaction_response = g.interaction_response
+
+        cmd = self._commands[interaction.data.name]
+
+        if cmd.after_callback is None:
+            return response
+
+        ctx = AfterCommandContext(interaction, interaction_response, self._app_id)
+        cmd.after_callback(ctx)
+
+        return response
+
     def register_command(
         self,
         command: Union[ApplicationCommand, Type[ocm.Command], str],
         callback: _CommandCallback,
-    ):
+    ) -> CommandData:
+        """
+        Register a callback function for a Discord Slash Command.
+
+        :param command: The command that the callback is registered for
+        :param callback: The function that is called when the command is triggered
+        :return: The name of the command
+        """
+
         if isinstance(command, str):
-            self._callbacks[command] = callback
+            cmd = CommandData(command, callback)
         elif isinstance(command, ApplicationCommand):
-            self._commands[command.name] = command
-            self._callbacks[command.name] = callback
+            cmd = CommandData(command.name, callback, command)
         elif issubclass(command, ocm.Command):
-            self._commands[command.__cmd_name__] = command.to_application_command()
-            self._callbacks[command.__cmd_name__] = callback
+            cmd = CommandData(
+                command.__cmd_name__, callback, command.to_application_command()
+            )
         else:
-            TypeError(
+            raise TypeError(
                 "'command' must be 'str', 'ApplicationCommand'"
                 + "or subclass of 'ocm.Command'"
             )
 
+        self._commands[cmd.name] = cmd
+        return cmd
+
     def command(
-        self,
-        command: Union[ApplicationCommand, str, _CommandCallback] = None,
-    ):
+        self, command: Union[ApplicationCommand, str, _CommandCallback] = None
+    ) -> Union[Callable[[_CommandCallback], CommandData], CommandData]:
         """
         A decorator to register a slash command.
         Calls :meth:`register_command` internally.
+
+        :param command: The command that the decorated function is called on
         """
 
         _f = None
@@ -169,15 +221,15 @@ class Interactions:
             _f = command
             command = None
 
-        def decorator(f: _CommandCallback):
+        def decorator(f: _CommandCallback) -> CommandData:
             if command is not None:
-                self.register_command(command, f)
+                return self.register_command(command, f)
             elif len(annotations := f.__annotations__.values()) > 0:
                 _command = next(
                     iter(annotations)
                 )  # get :class:`ocm.Command` from type annotation
-                self.register_command(_command, f)
+                return self.register_command(_command, f)
             else:
-                self.register_command(f.__name__.lower().strip("_"), f)
+                return self.register_command(f.__name__.lower().strip("_"), f)
 
         return decorator(_f) if _f is not None else decorator
