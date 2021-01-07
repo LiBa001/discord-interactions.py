@@ -1,19 +1,20 @@
 Discord Interactions
 ====================
 
-.. image:: https://badge.fury.io/py/discord-interactions.py.svg
-    :target: https://pypi.org/project/discord-interactions.py
-    :alt: PyPI
+..
+    .. image:: https://badge.fury.io/py/discord-interactions.py.svg
+        :target: https://pypi.org/project/discord-interactions.py
+        :alt: PyPI
 
-.. image:: https://img.shields.io/github/license/LiBa001/discord-interactions.py
-    :target: https://github.com/LiBa001/discord-interactions.py/blob/master/LICENSE
-    :alt: License
+    .. image:: https://img.shields.io/github/license/LiBa001/discord-interactions.py
+        :target: https://github.com/LiBa001/discord-interactions.py/blob/master/LICENSE
+        :alt: License
 
-.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-    :target: https://github.com/psf/black
+    .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+        :target: https://github.com/psf/black
 
-.. image:: https://github.com/LiBa001/discord-interactions.py/workflows/Python%20package/badge.svg
-    :target: https://github.com/LiBa001/discord-interactions.py/actions
+    .. image:: https://github.com/LiBa001/discord-interactions.py/workflows/Python%20package/badge.svg
+        :target: https://github.com/LiBa001/discord-interactions.py/actions
 
 
 A wrapper for the Discord Interactions API that does not rely on websockets
@@ -149,6 +150,33 @@ So, the simplest possible example looks like this:
     @interactions.command
     def _echo(cmd: _Echo):
         return cmd.message
+
+
+Followup Messages
+~~~~~~~~~~~~~~~~~
+
+If you want to send messages after the initial response, you need to create followup
+messages. For this purpose you can use the ``after_command`` decorator, that registers
+a function to be called after the actual command function has returned. The function
+needs to take exactly one parameter, the ``AfterCommandContext``, which contains the
+several things, like the ``Interaction`` and initial ``InteractionResponse``.
+To be able to create followup messages, you need to provide the ID of your Discord
+application to the ``Interactions`` constructor.
+
+.. code-block:: py
+
+    interactions = Interactions(app, PUBLIC_KEY, APP_ID)
+
+    @interactions.command("delay")
+    def delay(_: Interaction):
+        return None
+
+
+    @delay.after_command
+    def after_delay(ctx: AfterCommandContext):
+        delay_time = ctx.interaction.data.options[0].value
+        time.sleep(delay_time)
+        ctx.send(f"{delay_time} seconds have passed")
 
 
 More Examples
