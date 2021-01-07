@@ -46,14 +46,19 @@ _CommandCallback = Callable[
 
 
 class Interactions:
-    def __init__(self, app: Flask, public_key: str):
+    def __init__(self, app: Flask, public_key: str, path: str = "/"):
         self._app = app
         self._public_key = public_key
+        self._path = path
 
-        app.add_url_rule("/", "interactions", self._main, methods=["POST"])
+        app.add_url_rule(path, "interactions", self._main, methods=["POST"])
 
         self._commands: Dict[str, ApplicationCommand] = {}
         self._callbacks: Dict[str, _CommandCallback] = {}
+
+    @property
+    def path(self) -> str:
+        return self._path
 
     @property
     def commands(self) -> List[ApplicationCommand]:
