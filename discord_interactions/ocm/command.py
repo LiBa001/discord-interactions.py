@@ -92,7 +92,7 @@ class Option(_Option, metaclass=OptionContainerType):
     name: str = None
     default: bool = False
     required: bool = False
-    choices: Type[OptionChoices] = None
+    choices: Union[Type[OptionChoices], dict] = None
     __data: ApplicationCommandInteractionDataOption = None
     __data_loaded: bool = False
 
@@ -113,7 +113,11 @@ class Option(_Option, metaclass=OptionContainerType):
 
             if (option := data.get_option(self.name)) is not None:
                 value = option.value
-                return value if self.choices is None else self.choices(value)
+                choices = self.choices
+                if isinstance(choices, type) and issubclass(choices, OptionChoices):
+                    return choices(value)
+                else:
+                    return value
             else:
                 return None
 
@@ -135,7 +139,13 @@ class Option(_Option, metaclass=OptionContainerType):
             options.append(option.to_application_command_option())
 
         if self.choices:
-            choices = self.choices.to_application_command_option_choices()
+            if isinstance(self.choices, dict):
+                choices = [
+                    ApplicationCommandOptionChoice(name, value)
+                    for name, value in self.choices.items()
+                ]
+            else:
+                choices = self.choices.to_application_command_option_choices()
         else:
             choices = None
 
