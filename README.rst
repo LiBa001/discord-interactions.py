@@ -1,20 +1,19 @@
 Discord Interactions
 ====================
 
-..
-    .. image:: https://badge.fury.io/py/discord-interactions.py.svg
-        :target: https://pypi.org/project/discord-interactions.py
-        :alt: PyPI
+.. image:: https://badge.fury.io/py/discord-interactions.py.svg
+    :target: https://pypi.org/project/discord-interactions.py
+    :alt: PyPI
 
-    .. image:: https://img.shields.io/github/license/LiBa001/discord-interactions.py
-        :target: https://github.com/LiBa001/discord-interactions.py/blob/master/LICENSE
-        :alt: License
+.. image:: https://img.shields.io/github/license/LiBa001/discord-interactions.py
+    :target: https://github.com/LiBa001/discord-interactions.py/blob/master/LICENSE
+    :alt: License
 
-    .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-        :target: https://github.com/psf/black
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
 
-    .. image:: https://github.com/LiBa001/discord-interactions.py/workflows/Python%20package/badge.svg
-        :target: https://github.com/LiBa001/discord-interactions.py/actions
+.. image:: https://github.com/LiBa001/discord-interactions.py/workflows/Python%20package/badge.svg
+    :target: https://github.com/LiBa001/discord-interactions.py/actions
 
 
 A wrapper for the Discord Interactions API that does not rely on websockets
@@ -106,7 +105,8 @@ Let's make it a bit simpler:
 
     @interactions.command(echo_cmd)
     def _echo(interaction: Interaction):
-        msg = interaction.data.options[0].value  # "message" option content
+        # different way of getting an option
+        msg = interaction.data.get_option("message").value
 
         return msg
 
@@ -116,6 +116,7 @@ return the response content as a string. The response type then defaults to
 None, if you don't want to send a response. You can also simply return a boolean as a
 second value, indicating whether or not the command call should be displayed in Discord
 (i.e. the ``_WITH_SOURCE`` part of the response type).
+Also we get the option via the ``get_option`` helper method.
 
 
 The Object-Command Mapper
