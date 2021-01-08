@@ -186,7 +186,7 @@ class Interactions:
 
         :param command: The command that the callback is registered for
         :param callback: The function that is called when the command is triggered
-        :return: The name of the command
+        :return: An object containing all the command data (e.g. structure, callbacks)
         """
 
         if isinstance(command, str):
