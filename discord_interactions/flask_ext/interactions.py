@@ -37,6 +37,7 @@ from discord_interactions import (
 )
 from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
+from threading import Thread
 
 from .context import AfterCommandContext, CommandContext
 
@@ -94,7 +95,11 @@ class Interactions:
     def commands(self) -> List[ApplicationCommand]:
         """ All registered application commands """
 
-        return [cmd.application_command for cmd in self._commands.values()]
+        return [
+            cmd.application_command
+            for cmd in self._commands.values()
+            if cmd.application_command is not None
+        ]
 
     def create_commands(self, client: ApplicationClient, guild: int = None):
         """ Create all registered commands as application commands at Discord. """
@@ -130,11 +135,10 @@ class Interactions:
                 ctx = CommandContext(interaction, self._app_id)
                 arg_diff = cb.__code__.co_argcount - (len(interaction.data.options) + 1)
                 num_kwargs = len(cb.__defaults__)
-                if arg_diff > 1 or (arg_diff > 0 and num_kwargs > 1):
-                    # if more than one argument is not provided
+                if 1 < num_kwargs > arg_diff > 0:
+                    # if not all arguments can be passed by position
                     cb_args = interaction.data.options[:-arg_diff]
                     cb_kwargs = interaction.data.options[-arg_diff:]
-                    print(cb_args, cb_kwargs, num_kwargs, arg_diff)
                 else:
                     cb_args = interaction.data.options
                     cb_kwargs = []
@@ -199,7 +203,9 @@ class Interactions:
             return response
 
         ctx = AfterCommandContext(interaction, interaction_response, self._app_id)
-        cmd.after_callback(ctx)
+
+        t = Thread(target=cmd.after_callback, args=(ctx,))
+        t.start()
 
         return response
 
