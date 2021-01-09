@@ -135,11 +135,10 @@ class Interactions:
                 ctx = CommandContext(interaction, self._app_id)
                 arg_diff = cb.__code__.co_argcount - (len(interaction.data.options) + 1)
                 num_kwargs = len(cb.__defaults__)
-                if arg_diff > 1 or (arg_diff > 0 and num_kwargs > 1):
-                    # if more than one argument is not provided
+                if 1 < num_kwargs > arg_diff > 0:
+                    # if not all arguments can be passed by position
                     cb_args = interaction.data.options[:-arg_diff]
                     cb_kwargs = interaction.data.options[-arg_diff:]
-                    print(cb_args, cb_kwargs, num_kwargs, arg_diff)
                 else:
                     cb_args = interaction.data.options
                     cb_kwargs = []
