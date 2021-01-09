@@ -47,6 +47,22 @@ test_data = [
             },
         },
     ),
+    (
+        {
+            "id": "44444",
+            "name": "guess",
+            "options": [
+                {"name": "number", "value": 42},
+                {"name": "max_num", "value": 69},
+            ],
+        },
+        {
+            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "data": {
+                "content": DO_NOT_VALIDATE,
+            },
+        },
+    ),
 ]
 
 
