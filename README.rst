@@ -181,9 +181,17 @@ application to the ``Interactions`` constructor.
 
 
 More Examples
-~~~~~~~~~~~~~
+-------------
 
-For more examples take a look at examples_.
+For more examples of the different features take a look at examples_.
+
+If you want to know how to make your Discord bot work with Slash Commands
+and how to set everything up, take a look at `this example project`__.
+It hosts the program in a serverless environment via Google Cloud Run and also
+provides a demo bot, so you can try out Slash Commands in your Discord server.
+Check it out to learn more!
+
+__ https://github.com/LiBa001/discord-interactions-example
 
 
 .. _Git: https://git-scm.com
