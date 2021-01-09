@@ -94,7 +94,11 @@ class Interactions:
     def commands(self) -> List[ApplicationCommand]:
         """ All registered application commands """
 
-        return [cmd.application_command for cmd in self._commands.values()]
+        return [
+            cmd.application_command
+            for cmd in self._commands.values()
+            if cmd.application_command is not None
+        ]
 
     def create_commands(self, client: ApplicationClient, guild: int = None):
         """ Create all registered commands as application commands at Discord. """
