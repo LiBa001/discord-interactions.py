@@ -117,6 +117,9 @@ class Interactions:
         return verify_key(request.data, signature, timestamp, self._public_key)
 
     def _main(self):
+        g.interaction = None
+        g.interaction_response = None
+
         # Verify request
         if not self._app.config["TESTING"]:
             if not self._verify_request():
@@ -196,6 +199,9 @@ class Interactions:
     def _after_request(self, response: Response):
         interaction = g.interaction
         interaction_response = g.interaction_response
+
+        if interaction is None:
+            return response
 
         cmd = self._commands[interaction.data.name]
 
