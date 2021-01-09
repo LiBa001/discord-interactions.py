@@ -37,6 +37,7 @@ from discord_interactions import (
 )
 from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
+from threading import Thread
 
 from .context import AfterCommandContext, CommandContext
 
@@ -203,7 +204,9 @@ class Interactions:
             return response
 
         ctx = AfterCommandContext(interaction, interaction_response, self._app_id)
-        cmd.after_callback(ctx)
+
+        t = Thread(target=cmd.after_callback, args=(ctx,))
+        t.start()
 
         return response
 
