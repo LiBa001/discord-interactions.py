@@ -36,16 +36,23 @@ from discord_interactions import (
     ApplicationClient,
 )
 from discord_interactions import ocm
-from typing import Callable, Union, Type, Dict, List, Tuple, Optional
+from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
 
-from .context import AfterCommandContext
+from .context import AfterCommandContext, CommandContext
 
 
-_CommandCallback = Callable[
-    [Union[Interaction, ocm.Command]],
-    Union[InteractionResponse, str, None, Tuple[Optional[str], bool]],
+_CommandCallbackReturnType = Union[
+    InteractionResponse, str, None, Tuple[Optional[str], bool]
+]
+_CommandCallback = Union[
+    Callable[
+        [Union[Interaction, ocm.Command]],
+        _CommandCallbackReturnType,
+    ],
+    Callable[[CommandContext, Any], _CommandCallbackReturnType],
 ]
 _AfterCommandCallback = Callable[[AfterCommandContext], None]
+_DecoratedCommand = Union[ApplicationCommand, str, _CommandCallback, Type[ocm.Command]]
 
 
 class CommandData:
@@ -119,13 +126,33 @@ class Interactions:
             cmd = interaction.data.name
             cb = self._commands[cmd].callback
 
-            cb_data = interaction
-            if len(annotations := cb.__annotations__.values()) > 0:
-                cmd_type = next(iter(annotations))
-                if issubclass(cmd_type, ocm.Command):
-                    cb_data = cmd_type.wrap(interaction)
+            if cb.__code__.co_argcount > 1:  # if the cb takes more than one argument
+                ctx = CommandContext(interaction, self._app_id)
+                arg_diff = cb.__code__.co_argcount - (len(interaction.data.options) + 1)
+                num_kwargs = len(cb.__defaults__)
+                if arg_diff > 1 or (arg_diff > 0 and num_kwargs > 1):
+                    # if more than one argument is not provided
+                    cb_args = interaction.data.options[:-arg_diff]
+                    cb_kwargs = interaction.data.options[-arg_diff:]
+                    print(cb_args, cb_kwargs, num_kwargs, arg_diff)
+                else:
+                    cb_args = interaction.data.options
+                    cb_kwargs = []
+                resp = cb(
+                    ctx,
+                    *[o.value for o in cb_args],
+                    **{o.name: o.value for o in cb_kwargs},
+                )
+            else:
+                cb_data = interaction
+                if len(annotations := cb.__annotations__.values()) > 0:
+                    cmd_type = next(iter(annotations))
+                    if issubclass(cmd_type, ocm.Command):
+                        cb_data = cmd_type.wrap(interaction)
+                    elif issubclass(cmd_type, CommandContext):
+                        cb_data = cmd_type(interaction, self._app_id)
 
-            resp = cb(cb_data)
+                resp = cb(cb_data)
 
             if isinstance(resp, InteractionResponse):
                 interaction_response = resp
@@ -186,7 +213,7 @@ class Interactions:
 
         :param command: The command that the callback is registered for
         :param callback: The function that is called when the command is triggered
-        :return: The name of the command
+        :return: An object containing all the command data (e.g. structure, callbacks)
         """
 
         if isinstance(command, str):
@@ -207,7 +234,7 @@ class Interactions:
         return cmd
 
     def command(
-        self, command: Union[ApplicationCommand, str, _CommandCallback] = None
+        self, command: _DecoratedCommand = None
     ) -> Union[Callable[[_CommandCallback], CommandData], CommandData]:
         """
         A decorator to register a slash command.
@@ -217,7 +244,7 @@ class Interactions:
         """
 
         _f = None
-        if isinstance(command, Callable):
+        if isinstance(command, Callable) and not isinstance(command, type(ocm.Command)):
             _f = command
             command = None
 

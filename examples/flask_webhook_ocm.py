@@ -1,4 +1,4 @@
-from discord_interactions.flask_ext import Interactions
+from discord_interactions.flask_ext import Interactions, CommandContext
 from discord_interactions.ocm import Command, Option, OptionChoices
 from flask import Flask
 import os
@@ -28,6 +28,14 @@ class RPS(Command):
     """ Play Rock, Paper, Scissors! """
 
     symbol: RPSSymbol = Option("rock, paper or scissors", required=True)
+
+
+class Guess(Command):
+    """ Guess my number! """
+
+    number: int = Option("what do you guess?", required=True)
+    min_num: int = Option("smallest possible number (default: 0)")
+    max_num: int = Option("biggest possible number (default: 10)")
 
 
 @interactions.command
@@ -63,6 +71,23 @@ def rps(cmd: RPS):
             msg = "You cut me and win!"
 
     return f"I took {choice.value}. {msg}"
+
+
+# This type of syntax does also work with the OCM, though, it will lose the advantage
+# of the command class being used as container for the interaction data.
+@interactions.command(Guess)
+def guess(ctx: CommandContext, guessed_num, min_num=None, max_num=None):
+    min_val = min_num or 0  # defaults to 0
+    max_val = max_num or 10  # defaults to 10
+
+    my_number = random.randint(min_val, max_val)
+
+    if my_number == guessed_num:
+        msg = "You are correct! :tada:"
+    else:
+        msg = "You guessed it wrong. :confused:"
+
+    return f"My number was {my_number}. {msg}"
 
 
 if __name__ == "__main__":
