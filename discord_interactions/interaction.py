@@ -103,6 +103,15 @@ class Interaction:
 
     @classmethod
     def from_json(cls, data: Union[dict, str]) -> "Interaction":
+        """
+        Creates an instance of this class from the JSON data that is received on a
+        Discord interaction.
+
+        https://discord.com/developers/docs/interactions/slash-commands#interaction
+
+        :param data: Received JSON
+        :return: Instance of :class:`Interaction`
+        """
         if isinstance(data, str):
             data = json.loads(data)
 

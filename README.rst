@@ -5,6 +5,10 @@ Discord Interactions
     :target: https://pypi.org/project/discord-interactions.py
     :alt: PyPI
 
+.. image:: https://readthedocs.org/projects/discord-interactionspy/badge/?version=latest
+    :target: https://discord-interactionspy.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 .. image:: https://img.shields.io/github/license/LiBa001/discord-interactions.py
     :target: https://github.com/LiBa001/discord-interactions.py/blob/master/LICENSE
     :alt: License
