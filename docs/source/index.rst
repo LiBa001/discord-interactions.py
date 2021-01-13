@@ -15,7 +15,7 @@ discord-interactions.py
    guides/quickstart
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 1
    :caption: Reference
    :glob:
 
