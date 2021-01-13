@@ -1,7 +1,7 @@
 Client
 ======
 
-.. py:currentmodule:: discord_interactions.client
+.. py:currentmodule:: discord_interactions
 
 
 ApplicationClient

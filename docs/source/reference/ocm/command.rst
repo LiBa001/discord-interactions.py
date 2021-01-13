@@ -1,7 +1,7 @@
 Command
 =======
 
-.. py:currentmodule:: discord_interactions.ocm.command
+.. py:currentmodule:: discord_interactions.ocm
 
 
 Command

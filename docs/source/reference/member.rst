@@ -1,7 +1,7 @@
 Member
 ======
 
-.. py:currentmodule:: discord_interactions.member
+.. py:currentmodule:: discord_interactions
 
 
 Member
