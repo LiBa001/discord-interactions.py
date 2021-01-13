@@ -1,3 +1,5 @@
+.. py:currentmodule:: discord_interactions
+
 Quickstart Guide
 ================
 
