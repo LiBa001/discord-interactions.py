@@ -63,7 +63,7 @@ class OptionContainerType(type):
             if isinstance(attr, _Option):
                 # set option name to attribute name where not explicitly set
                 if attr.name is None:
-                    attr.name = attr_name
+                    attr.name = attr_name.strip("_")
 
                 # set option type based on type annotations where not explicitly set
                 if attr.type is None:
@@ -133,7 +133,7 @@ class Option(_Option, metaclass=OptionContainerType):
 
     def to_application_command_option(self) -> ApplicationCommandOption:
         options = []
-        for option in self.__dict__.values():
+        for option in self.__class__.__dict__.values():
             if not isinstance(option, Option):
                 continue
             options.append(option.to_application_command_option())
