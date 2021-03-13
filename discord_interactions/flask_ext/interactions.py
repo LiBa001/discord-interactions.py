@@ -30,6 +30,7 @@ from discord_interactions import (
     InteractionType,
     InteractionResponse,
     InteractionResponseType,
+    ResponseFlags,
     InteractionApplicationCommandCallbackData,
     verify_key,
     ApplicationCommand,
@@ -165,23 +166,23 @@ class Interactions:
                 interaction_response = resp
             else:
                 # figure out what the response should look like
-                with_source = True
+                ephemeral = False
 
                 if isinstance(resp, tuple):
-                    resp, with_source = resp
+                    resp, ephemeral = resp
 
                 if resp is None:
+                    r_type = InteractionResponseType.DEFERRED_CHANNEL_MESSAGE
                     r_data = None
-                    if with_source:
-                        r_type = InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE
-                    else:
-                        r_type = InteractionResponseType.ACKNOWLEDGE
+                    if ephemeral:
+                        r_data = InteractionApplicationCommandCallbackData(
+                            flags=[ResponseFlags.EPHEMERAL]
+                        )
                 else:
+                    r_type = InteractionResponseType.CHANNEL_MESSAGE
                     r_data = InteractionApplicationCommandCallbackData(str(resp))
-                    if with_source:
-                        r_type = InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE
-                    else:
-                        r_type = InteractionResponseType.CHANNEL_MESSAGE
+                    if ephemeral:
+                        r_data.flags = [ResponseFlags.EPHEMERAL]
 
                 interaction_response = InteractionResponse(
                     type=r_type,

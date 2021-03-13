@@ -165,7 +165,7 @@ class InteractionClient(_BaseClient):
 
         self._send(Request("DELETE", self._url("messages/@original")))
 
-    def create_message(self, msg: FollowupMessage):
+    def create_message(self, msg: FollowupMessage):  # TODO: return message
         """ Create a followup message for an Interaction. """
 
         self._send(Request("POST", self._url(), json=msg.to_dict()))

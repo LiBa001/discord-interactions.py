@@ -27,6 +27,7 @@ SOFTWARE.
 from discord_interactions import (
     InteractionClient,
     Interaction,
+    InteractionApplicationCommandCallbackData,
     InteractionResponse,
     FollowupMessage,
 )
@@ -71,6 +72,11 @@ class AfterCommandContext(CommandContext):
             raise AttributeError("'app_id' needs to be provided for the client to work")
 
         return self._client
+
+    def edit_original(self, content: str, **options):
+        data = InteractionApplicationCommandCallbackData(content, **options)
+
+        self.client.edit_response(data)
 
     def send(self, msg: str, tts: bool = False):
         followup_msg = FollowupMessage(content=msg, tts=tts)

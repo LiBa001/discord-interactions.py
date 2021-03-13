@@ -26,7 +26,7 @@ SOFTWARE.
 
 import json
 from enum import Enum
-from .member import Member
+from .member import Member, User
 from typing import Union
 
 
@@ -95,9 +95,10 @@ class Interaction:
             return
 
         self.data = INTERACTION_TYPE_MAP[self.type](**kwargs.get("data", {}))
-        self.guild_id = int(kwargs["guild_id"])
-        self.channel_id = int(kwargs["channel_id"])
-        self.member = Member(**kwargs["member"])
+        self.guild_id = int(kwargs.get("guild_id", 0)) or None
+        self.channel_id = int(kwargs.get("channel_id", 0)) or None
+        self.member = Member(**kwargs["member"]) if "member" in kwargs else None
+        self.user = User(**kwargs["user"]) if "user" in kwargs else None
         self.token = kwargs["token"]
         self.version = int(kwargs["version"])
 

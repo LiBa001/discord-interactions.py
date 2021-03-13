@@ -10,6 +10,7 @@ from .interaction import (
 from .interaction_response import (
     InteractionResponse,
     InteractionResponseType,
+    ResponseFlags,
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
 )
