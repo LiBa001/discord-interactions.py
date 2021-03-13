@@ -17,7 +17,7 @@ test_data = [
             "options": [],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {"content": "pong"},
         },
     ),
@@ -41,7 +41,7 @@ test_data = [
             "options": [{"name": "symbol", "value": "paper"}],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
@@ -57,7 +57,7 @@ test_data = [
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
@@ -72,7 +72,7 @@ test_data = [
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
