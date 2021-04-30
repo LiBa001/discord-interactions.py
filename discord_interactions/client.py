@@ -34,6 +34,7 @@ from .interaction_response import (
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
 )
+from .permissions import GuildPermissions, Permissions
 from . import ocm
 
 CmdClass = Type[ocm.Command]
@@ -131,12 +132,58 @@ class ApplicationClient(_BaseClient):
 
         self._send(Request("DELETE", self._cmd_url(cmd_id, guild)))
 
+    def bulk_overwrite_commands(
+        self, commands: List[Union[Cmd, CmdClass]], guild: int = None
+    ) -> List[Cmd]:
+        """ Overwrite all existing global/guild commands. """
+
+        commands_data = []
+        for cmd in commands:
+            if not isinstance(cmd, Cmd):
+                cmd = cmd.to_application_command()
+            commands_data.append(cmd.to_dict())
+
+        r = self._send(
+            Request("PUT", self._cmd_url(guild_id=guild), json=commands_data)
+        )
+
+        return [Cmd.from_dict(cmd) for cmd in r.json()]
+
+    def get_guild_command_permissions(self, guild: int) -> List[GuildPermissions]:
+        """ Fetch command permissions for all commands for your app in a guild. """
+
+        r = self._send(Request("GET", f"{self._cmd_url(guild)}/permissions"))
+
+        return [GuildPermissions.from_dict(p) for p in r.json()]
+
+    def get_command_permissions(self, cmd_id: int, guild: int) -> GuildPermissions:
+        """
+        Fetch command permissions for a specific command for your app in a guild.
+        """
+
+        r = self._send(Request("GET", f"{self._cmd_url(cmd_id, guild)}/permissions"))
+
+        return GuildPermissions.from_dict(r.json())
+
+    def edit_command_permissions(self, cmd_id: int, guild: int, perms: Permissions):
+        """
+        Edit command permissions for a specific command for your app in a guild.
+        """
+
+        self._send(
+            Request(
+                "PUT",
+                f"{self._cmd_url(cmd_id, guild)}/permissions",
+                json=perms.to_dict(),
+            )
+        )
+
 
 class InteractionClient(_BaseClient):
     BASE_URL = f"{API_BASE_URL}/webhooks"
 
-    def __init__(self, app_id: int, interaction: Interaction):
-        super().__init__(app_id)
+    def __init__(self, interaction: Interaction):
+        super().__init__(interaction.application_id)
 
         self._interaction = interaction
 

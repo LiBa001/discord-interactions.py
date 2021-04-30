@@ -27,12 +27,22 @@ SOFTWARE.
 import json
 from enum import Enum
 from .member import Member, User
+from .application_command import ApplicationCommandOptionType
 from typing import Union
 
 
 class InteractionType(Enum):
     PING = 1
     APPLICATION_COMMAND = 2
+
+
+class ApplicationCommandInteractionDataResolved:
+    def __init__(self, **kwargs):
+        # TODO: convert to dicts of Member, User, ... objects
+        self.users = kwargs.get("users")
+        self.members = kwargs.get("members")
+        self.roles = kwargs.get("roles")
+        self.channels = kwargs.get("channels")
 
 
 class _OptionGetter:
@@ -52,6 +62,7 @@ class _OptionGetter:
 class ApplicationCommandInteractionDataOption(_OptionGetter):
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
+        self.type = ApplicationCommandOptionType(kwargs["type"])
         self.value = kwargs.get("value")
         self.options = [
             ApplicationCommandInteractionDataOption(**option)
@@ -69,6 +80,9 @@ class ApplicationCommandInteractionData(_OptionGetter):
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
         self.name = kwargs["name"]
+        self.resolved = ApplicationCommandInteractionDataResolved(
+            **kwargs.get("resolved")
+        )
         self.options = [
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
@@ -89,6 +103,7 @@ class Interaction:
 
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
+        self.application_id = int(kwargs["application_id"])
         self.type = InteractionType(kwargs["type"])
 
         if self.type == InteractionType.PING:

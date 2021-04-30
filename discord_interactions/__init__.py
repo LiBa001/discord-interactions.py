@@ -22,6 +22,7 @@ from .application_command import (
     ApplicationCommandOptionChoice,
 )
 
+from .permissions import GuildPermissions, Permissions, PermissionType
 from .member import Member, User, UserFlags, PremiumType
 from .client import ApplicationClient, InteractionClient
 from .utils import verify_key

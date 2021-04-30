@@ -14,6 +14,7 @@ test_data = [
         {
             "id": "44444",
             "name": "ping",
+            "resolved": {},
             "options": [],
         },
         {
@@ -25,7 +26,8 @@ test_data = [
         {
             "id": "44444",
             "name": "echo",
-            "options": [{"name": "message", "value": "this is a test message"}],
+            "resolved": {},
+            "options": [{"name": "message", "type": 3, "value": "this is a test message"}],
         },
         {
             "type": InteractionResponseType.CHANNEL_MESSAGE.value,
@@ -38,7 +40,8 @@ test_data = [
         {
             "id": "44444",
             "name": "rps",
-            "options": [{"name": "symbol", "value": "paper"}],
+            "resolved": {},
+            "options": [{"name": "symbol", "type": 3, "value": "paper"}],
         },
         {
             "type": InteractionResponseType.CHANNEL_MESSAGE.value,
@@ -51,9 +54,10 @@ test_data = [
         {
             "id": "44444",
             "name": "guess",
+            "resolved": {},
             "options": [
-                {"name": "number", "value": 42},
-                {"name": "max_num", "value": 69},
+                {"name": "number", "type": 4, "value": 42},
+                {"name": "max_num", "type": 4, "value": 69},
             ],
         },
         {
@@ -67,8 +71,9 @@ test_data = [
         {
             "id": "44444",
             "name": "guess",
+            "resolved": {},
             "options": [
-                {"name": "number", "value": 7},
+                {"name": "number", "type": 4, "value": 7},
             ],
         },
         {
@@ -90,6 +95,7 @@ def test_commands(app: Flask, data: Tuple[dict, dict]):
 
     interaction = {
         "id": "11111",
+        "application_id": "55555",
         "type": InteractionType.APPLICATION_COMMAND.value,
         "data": data[0],
         "guild_id": "22222",

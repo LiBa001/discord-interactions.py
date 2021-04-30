@@ -94,6 +94,7 @@ class ApplicationCommand:
         name,
         description,
         options: List[ApplicationCommandOption] = None,
+        default_permission: bool = True,
         **kwargs
     ):
         self.id = int(kwargs.get("id", 0)) or None
@@ -101,6 +102,7 @@ class ApplicationCommand:
         self.name = name
         self.description = description
         self.options = options
+        self.default_permission = default_permission
 
     def add_option(self, option: ApplicationCommandOption):
         if self.options is None:
@@ -124,5 +126,7 @@ class ApplicationCommand:
             data["application_id"] = self.application_id
         if self.options:
             data["options"] = [option.to_dict() for option in self.options]
+        if not self.default_permission:  # omit when set to true
+            data["default_permission"] = self.default_permission
 
         return data
