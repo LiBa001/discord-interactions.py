@@ -1,5 +1,6 @@
 from discord_interactions.flask_ext import Interactions, CommandContext
 from discord_interactions.ocm import Command, Option, OptionChoices
+from discord_interactions import User
 from flask import Flask
 import os
 import random
@@ -36,6 +37,12 @@ class Guess(Command):
     number: int = Option("what do you guess?", required=True)
     min_num: int = Option("smallest possible number (default: 0)")
     max_num: int = Option("biggest possible number (default: 10)")
+
+
+class Hug(Command):
+    """ Hug someone nice """
+
+    cutie: User = Option("hug this person", required=True)
 
 
 @interactions.command
@@ -88,6 +95,11 @@ def guess(ctx: CommandContext, guessed_num, min_num=None, max_num=None):
         msg = "You guessed it wrong. :confused:"
 
     return f"My number was {my_number}. {msg}"
+
+
+@interactions.command
+def hug(cmd: Hug):
+    return f"<@{cmd.author.id}> *hugs* <@{cmd.cutie}>"
 
 
 if __name__ == "__main__":

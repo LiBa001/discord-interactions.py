@@ -69,6 +69,19 @@ guess_cmd = ApplicationCommand(
     ],
 )
 
+hug = ApplicationCommand(
+    "hug",
+    "Hug someone nice",
+    [
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.USER,
+            name="cutie",
+            description="hug this person",
+            required=True,
+        )
+    ],
+)
+
 
 # Note that only a name is provided here,
 # so for this command only the callback gets registered.
@@ -133,14 +146,21 @@ def guess(ctx: CommandContext, guessed_num, min_num=None, max_num=None):
 
 @interactions.command("delay")
 def delay(_: Interaction):
-    return None
+    return None, True  # delayed and ephemeral
 
 
 @delay.after_command
 def after_delay(ctx: AfterCommandContext):
     delay_time = ctx.interaction.data.options[0].value
+    ctx.edit_original("starting countdown")
     time.sleep(delay_time)
     ctx.send(f"{delay_time} seconds have passed")
+    ctx.client.delete_response()
+
+
+@interactions.command(hug)
+def hug(ctx: CommandContext, user_id):
+    return f"<@{ctx.interaction.author.id}> *hugs* <@{user_id}>"
 
 
 if __name__ == "__main__":

@@ -127,24 +127,90 @@ class Member:
         if premium_since := data.get("premium_since"):
             self.premium_since = datetime.fromisoformat(premium_since)
 
-        self.deaf = data["deaf"]
-        self.mute = data["mute"]
+        self.deaf = data.get("deaf")
+        self.mute = data.get("mute")
         self.pending = data.get("pending", False)
+
+    @property
+    def id(self):
+        return self.user.id if self.user else None
 
     def to_dict(self) -> dict:
         data = {
             "nick": self.nick,
             "roles": self.roles,
             "joined_at": self.joined_at.isoformat(),
-            "deaf": self.deaf,
-            "mute": self.mute,
         }
 
         if self.user:
             data["user"] = self.user.to_dict()
         if self.premium_since:
             data["premium_since"] = self.premium_since.isoformat()
+        if self.deaf is not None:
+            data["deaf"] = self.deaf
+        if self.mute is not None:
+            data["mute"] = self.mute
         if self.pending:
             data["pending"] = self.pending
 
         return data
+
+
+class Role:
+    def __init__(self, **data):
+        self.id = int(data["id"])
+        self.name = data["name"]
+        self.color = data["color"]
+        self.hoist = data["hoist"]
+        self.position = data["position"]
+        self.permissions = data["permissions"]
+        self.managed = data["managed"]
+        self.mentionable = data["mentionable"]
+        self.tags = data.get("tags")
+
+
+class ChannelType(Enum):
+    GUILD_TEXT = 0
+    DM = 1
+    VOICE = 2
+    GROUP_DM = 3
+    CATEGORY = 4
+    NEWS = 5
+    STORE = 6
+    NEWS_THREAD = 10
+    PUBLIC_THREAD = 11
+    PRIVATE_THREAD = 12
+    STAGE_VOICE = 13
+
+
+class VideoQualityMode(Enum):
+    AUTO = 1
+    FULL = 2
+
+
+class Channel:
+    def __init__(self, **data):
+        self.id = int(data["id"])
+        self.type = ChannelType(data["type"])
+        self.guild_id = data.get("guild_id")
+        self.position = data.get("position")
+        self.permission_overwrites = data.get("permission_overwrites")
+        self.name = data.get("name")
+        self.topic = data.get("topic")
+        self.nsfw = data.get("nsfw")
+        self.last_message_id = data.get("last_message_id")
+        self.bitrate = data.get("bitrate")
+        self.user_limit = data.get("user_limit")
+        self.rate_limit_per_user = data.get("rate_limit_per_user")
+        self.recipients = data.get("recipients")
+        self.icon = data.get("icon")
+        self.owner_id = data.get("owner_id")
+        self.application_id = data.get("application_id")
+        self.parent_id = data.get("parent_id")
+        self.last_pin_timestamp = data.get("last_pin_timestamp")
+        self.rtc_region = data.get("rtc_region")
+        self.video_quality_mode = VideoQualityMode(data.get("video_quality_mode", 1))
+        self.message_count = data.get("message_count")
+        self.member_count = data.get("member_count")
+        self.thread_metadata = data.get("thread_metadata")
+        self.member = data.get("member")

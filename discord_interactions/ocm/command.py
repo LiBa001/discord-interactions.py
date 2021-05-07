@@ -27,6 +27,9 @@ SOFTWARE.
 from discord_interactions import (
     Interaction,
     Member,
+    User,
+    Channel,
+    Role,
     ApplicationCommandInteractionDataOption,
     ApplicationCommand,
     ApplicationCommandOption,
@@ -63,7 +66,7 @@ class OptionContainerType(type):
             if isinstance(attr, _Option):
                 # set option name to attribute name where not explicitly set
                 if attr.name is None:
-                    attr.name = attr_name
+                    attr.name = attr_name.strip("_")
 
                 # set option type based on type annotations where not explicitly set
                 if attr.type is None:
@@ -76,6 +79,14 @@ class OptionContainerType(type):
                             attr.type = _type
                         elif _type == int:
                             attr.type = ApplicationCommandOptionType.INTEGER
+                        elif _type == bool:
+                            attr.type = ApplicationCommandOptionType.BOOLEAN
+                        elif _type == User or _type == Member:
+                            attr.type = ApplicationCommandOptionType.USER
+                        elif _type == Channel:
+                            attr.type = ApplicationCommandOptionType.CHANNEL
+                        elif _type == Role:
+                            attr.type = ApplicationCommandOptionType.ROLE
                         elif issubclass(_type, OptionChoices):
                             attr.choices = _type
                             _type = type(next(iter(_type)).value)
@@ -104,6 +115,8 @@ class Option(_Option, metaclass=OptionContainerType):
         )
 
     def __get__(self, instance: Union["Command", "Option"], owner):
+        """ Return what data this option actually received. """
+
         if not self.is_sub_command:
             data = (
                 getattr(instance, "_Command__interaction").data
@@ -133,7 +146,7 @@ class Option(_Option, metaclass=OptionContainerType):
 
     def to_application_command_option(self) -> ApplicationCommandOption:
         options = []
-        for option in self.__dict__.values():
+        for option in self.__class__.__dict__.values():
             if not isinstance(option, Option):
                 continue
             options.append(option.to_application_command_option())
@@ -193,28 +206,36 @@ class Command(metaclass=CommandType):
         return inst
 
     @property
+    def interaction(self) -> Interaction:
+        return self.__interaction
+
+    @property
     def guild_id(self) -> int:
-        return self.__interaction.guild_id
+        return self.interaction.guild_id
 
     @property
     def channel_id(self) -> int:
-        return self.__interaction.channel_id
+        return self.interaction.channel_id
 
     @property
-    def member(self) -> Member:
-        return self.__interaction.member
+    def author(self) -> Union[Member, User]:
+        return self.interaction.author
 
     @property
     def interaction_id(self) -> int:
-        return self.__interaction.id
+        return self.interaction.id
+
+    @property
+    def app_id(self) -> int:
+        return self.interaction.application_id
 
     @property
     def command_id(self) -> int:
-        return self.__interaction.data.id
+        return self.interaction.data.id
 
     @property
     def token(self) -> str:
-        return self.__interaction.token
+        return self.interaction.token
 
     @classmethod
     def to_application_command(cls) -> ApplicationCommand:

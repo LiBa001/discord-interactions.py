@@ -27,15 +27,15 @@ SOFTWARE.
 from discord_interactions import (
     InteractionClient,
     Interaction,
+    InteractionApplicationCommandCallbackData,
     InteractionResponse,
     FollowupMessage,
 )
 
 
 class CommandContext:
-    def __init__(self, interaction: Interaction, app_id: int = None):
+    def __init__(self, interaction: Interaction):
         self._interaction = interaction
-        self._app_id = app_id
 
     @property
     def interaction(self) -> Interaction:
@@ -43,23 +43,15 @@ class CommandContext:
 
     @property
     def app_id(self) -> int:
-        return self._app_id
+        return self._interaction.application_id
 
 
 class AfterCommandContext(CommandContext):
-    def __init__(
-        self,
-        interaction: Interaction,
-        response: InteractionResponse,
-        app_id: int = None,
-    ):
-        super(AfterCommandContext, self).__init__(interaction, app_id)
+    def __init__(self, interaction: Interaction, response: InteractionResponse):
+        super(AfterCommandContext, self).__init__(interaction)
 
         self._response = response
-        self._client = None
-
-        if self.app_id is not None:
-            self._client = InteractionClient(self.app_id, self.interaction)
+        self._client = InteractionClient(self.interaction)
 
     @property
     def response(self) -> InteractionResponse:
@@ -67,10 +59,12 @@ class AfterCommandContext(CommandContext):
 
     @property
     def client(self) -> InteractionClient:
-        if self._client is None:
-            raise AttributeError("'app_id' needs to be provided for the client to work")
-
         return self._client
+
+    def edit_original(self, content: str, **options):
+        data = InteractionApplicationCommandCallbackData(content, **options)
+
+        self.client.edit_response(data)
 
     def send(self, msg: str, tts: bool = False):
         followup_msg = FollowupMessage(content=msg, tts=tts)

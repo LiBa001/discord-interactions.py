@@ -30,6 +30,7 @@ from discord_interactions import (
     InteractionType,
     InteractionResponse,
     InteractionResponseType,
+    ResponseFlags,
     InteractionApplicationCommandCallbackData,
     verify_key,
     ApplicationCommand,
@@ -135,9 +136,9 @@ class Interactions:
             cb = self._commands[cmd].callback
 
             if cb.__code__.co_argcount > 1:  # if the cb takes more than one argument
-                ctx = CommandContext(interaction, self._app_id)
+                ctx = CommandContext(interaction)
                 arg_diff = cb.__code__.co_argcount - (len(interaction.data.options) + 1)
-                num_kwargs = len(cb.__defaults__)
+                num_kwargs = len(cb.__defaults__ or ())
                 if 1 < num_kwargs > arg_diff > 0:
                     # if not all arguments can be passed by position
                     cb_args = interaction.data.options[:-arg_diff]
@@ -157,7 +158,7 @@ class Interactions:
                     if issubclass(cmd_type, ocm.Command):
                         cb_data = cmd_type.wrap(interaction)
                     elif issubclass(cmd_type, CommandContext):
-                        cb_data = cmd_type(interaction, self._app_id)
+                        cb_data = cmd_type(interaction)
 
                 resp = cb(cb_data)
 
@@ -165,23 +166,23 @@ class Interactions:
                 interaction_response = resp
             else:
                 # figure out what the response should look like
-                with_source = True
+                ephemeral = False
 
                 if isinstance(resp, tuple):
-                    resp, with_source = resp
+                    resp, ephemeral = resp
 
                 if resp is None:
+                    r_type = InteractionResponseType.DEFERRED_CHANNEL_MESSAGE
                     r_data = None
-                    if with_source:
-                        r_type = InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE
-                    else:
-                        r_type = InteractionResponseType.ACKNOWLEDGE
+                    if ephemeral:
+                        r_data = InteractionApplicationCommandCallbackData(
+                            flags=[ResponseFlags.EPHEMERAL]
+                        )
                 else:
+                    r_type = InteractionResponseType.CHANNEL_MESSAGE
                     r_data = InteractionApplicationCommandCallbackData(str(resp))
-                    if with_source:
-                        r_type = InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE
-                    else:
-                        r_type = InteractionResponseType.CHANNEL_MESSAGE
+                    if ephemeral:
+                        r_data.flags = [ResponseFlags.EPHEMERAL]
 
                 interaction_response = InteractionResponse(
                     type=r_type,
@@ -208,7 +209,7 @@ class Interactions:
         if cmd.after_callback is None:
             return response
 
-        ctx = AfterCommandContext(interaction, interaction_response, self._app_id)
+        ctx = AfterCommandContext(interaction, interaction_response)
 
         t = Thread(target=cmd.after_callback, args=(ctx,))
         t.start()
