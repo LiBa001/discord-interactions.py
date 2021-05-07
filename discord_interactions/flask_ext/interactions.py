@@ -136,7 +136,7 @@ class Interactions:
             cb = self._commands[cmd].callback
 
             if cb.__code__.co_argcount > 1:  # if the cb takes more than one argument
-                ctx = CommandContext(interaction, self._app_id)
+                ctx = CommandContext(interaction)
                 arg_diff = cb.__code__.co_argcount - (len(interaction.data.options) + 1)
                 num_kwargs = len(cb.__defaults__)
                 if 1 < num_kwargs > arg_diff > 0:
@@ -209,7 +209,7 @@ class Interactions:
         if cmd.after_callback is None:
             return response
 
-        ctx = AfterCommandContext(interaction, interaction_response, self._app_id)
+        ctx = AfterCommandContext(interaction, interaction_response)
 
         t = Thread(target=cmd.after_callback, args=(ctx,))
         t.start()
