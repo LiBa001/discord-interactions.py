@@ -138,7 +138,7 @@ class Interactions:
             if cb.__code__.co_argcount > 1:  # if the cb takes more than one argument
                 ctx = CommandContext(interaction)
                 arg_diff = cb.__code__.co_argcount - (len(interaction.data.options) + 1)
-                num_kwargs = len(cb.__defaults__)
+                num_kwargs = len(cb.__defaults__ or ())
                 if 1 < num_kwargs > arg_diff > 0:
                     # if not all arguments can be passed by position
                     cb_args = interaction.data.options[:-arg_diff]
