@@ -127,8 +127,8 @@ class Member:
         if premium_since := data.get("premium_since"):
             self.premium_since = datetime.fromisoformat(premium_since)
 
-        self.deaf = data["deaf"]
-        self.mute = data["mute"]
+        self.deaf = data.get("deaf")
+        self.mute = data.get("mute")
         self.pending = data.get("pending", False)
 
     @property
@@ -140,14 +140,16 @@ class Member:
             "nick": self.nick,
             "roles": self.roles,
             "joined_at": self.joined_at.isoformat(),
-            "deaf": self.deaf,
-            "mute": self.mute,
         }
 
         if self.user:
             data["user"] = self.user.to_dict()
         if self.premium_since:
             data["premium_since"] = self.premium_since.isoformat()
+        if self.deaf is not None:
+            data["deaf"] = self.deaf
+        if self.mute is not None:
+            data["mute"] = self.mute
         if self.pending:
             data["pending"] = self.pending
 
