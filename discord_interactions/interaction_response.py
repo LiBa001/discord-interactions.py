@@ -52,6 +52,10 @@ class ResponseFlags(Enum):
 
 @dataclass()
 class InteractionApplicationCommandCallbackData:
+    """
+    The data that is sent in an :class:`InteractionResponse`.
+    """
+
     content: str = None
     tts: bool = False
     embeds: List[DictConvertible] = None
@@ -81,6 +85,10 @@ class InteractionApplicationCommandCallbackData:
 
 @dataclass()
 class InteractionResponse:
+    """
+    Represents a basic response to a received :class:`Interaction`.
+    """
+
     type: InteractionResponseType
     data: InteractionApplicationCommandCallbackData = None
 
@@ -95,6 +103,10 @@ class InteractionResponse:
 
 @dataclass()
 class FollowupMessage:
+    """
+    Represents a message that can be sent after the initial :class:`InteractionResponse`
+    """
+
     content: str = None
     username: str = None
     avatar_url: str = None
