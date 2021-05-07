@@ -84,7 +84,7 @@ class ApplicationCommandInteractionData(_OptionGetter):
         self.id = int(kwargs["id"])
         self.name = kwargs["name"]
         self.resolved = ApplicationCommandInteractionDataResolved(
-            **kwargs.get("resolved")
+            **kwargs.get("resolved", {})
         )
         self.options = [
             ApplicationCommandInteractionDataOption(**option)
