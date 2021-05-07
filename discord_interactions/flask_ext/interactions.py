@@ -158,7 +158,7 @@ class Interactions:
                     if issubclass(cmd_type, ocm.Command):
                         cb_data = cmd_type.wrap(interaction)
                     elif issubclass(cmd_type, CommandContext):
-                        cb_data = cmd_type(interaction, self._app_id)
+                        cb_data = cmd_type(interaction)
 
                 resp = cb(cb_data)
 

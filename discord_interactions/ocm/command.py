@@ -104,6 +104,8 @@ class Option(_Option, metaclass=OptionContainerType):
         )
 
     def __get__(self, instance: Union["Command", "Option"], owner):
+        """ Return what data this option actually received. """
+
         if not self.is_sub_command:
             data = (
                 getattr(instance, "_Command__interaction").data
@@ -193,28 +195,36 @@ class Command(metaclass=CommandType):
         return inst
 
     @property
+    def interaction(self) -> Interaction:
+        return self.__interaction
+
+    @property
     def guild_id(self) -> int:
-        return self.__interaction.guild_id
+        return self.interaction.guild_id
 
     @property
     def channel_id(self) -> int:
-        return self.__interaction.channel_id
+        return self.interaction.channel_id
 
     @property
-    def member(self) -> Member:
-        return self.__interaction.member
+    def author(self) -> Member:
+        return self.interaction.member
 
     @property
     def interaction_id(self) -> int:
-        return self.__interaction.id
+        return self.interaction.id
+
+    @property
+    def app_id(self) -> int:
+        return self.interaction.application_id
 
     @property
     def command_id(self) -> int:
-        return self.__interaction.data.id
+        return self.interaction.data.id
 
     @property
     def token(self) -> str:
-        return self.__interaction.token
+        return self.interaction.token
 
     @classmethod
     def to_application_command(cls) -> ApplicationCommand:
