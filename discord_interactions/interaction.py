@@ -26,9 +26,9 @@ SOFTWARE.
 
 import json
 from enum import Enum
-from .member import Member, User
+from .models import User, Member, Role, Channel
 from .application_command import ApplicationCommandOptionType
-from typing import Union
+from typing import Union, Optional
 
 
 class InteractionType(Enum):
@@ -38,11 +38,14 @@ class InteractionType(Enum):
 
 class ApplicationCommandInteractionDataResolved:
     def __init__(self, **kwargs):
-        # TODO: convert to dicts of Member, User, ... objects
-        self.users = kwargs.get("users")
-        self.members = kwargs.get("members")
-        self.roles = kwargs.get("roles")
-        self.channels = kwargs.get("channels")
+        self.users = {u_id: User(**u) for u_id, u in kwargs.get("users", {}).items()}
+        self.members = {
+            m_id: Member(**m) for m_id, m in kwargs.get("members", {}).items()
+        }
+        self.roles = {r_id: Role(**r) for r_id, r in kwargs.get("roles", {}).items()}
+        self.channels = {
+            c_id: Channel(**c) for c_id, c in kwargs.get("channels", {}).items()
+        }
 
 
 class _OptionGetter:
@@ -123,3 +126,19 @@ class Interaction:
             data = json.loads(data)
 
         return cls(**data)
+
+    @property
+    def author(self) -> Union[Member, User]:
+        return self.member or self.user
+
+    def get_user(self, user_id: int) -> Optional[User]:
+        return self.data.resolved.users.get(user_id)
+
+    def get_member(self, member_id: int) -> Optional[Member]:
+        return self.data.resolved.members.get(member_id)
+
+    def get_role(self, role_id: int) -> Optional[Role]:
+        return self.data.resolved.roles.get(role_id)
+
+    def get_channel(self, channel_id: int) -> Optional[Channel]:
+        return self.data.resolved.channels.get(channel_id)

@@ -27,7 +27,9 @@ test_data = [
             "id": "44444",
             "name": "echo",
             "resolved": {},
-            "options": [{"name": "message", "type": 3, "value": "this is a test message"}],
+            "options": [
+                {"name": "message", "type": 3, "value": "this is a test message"}
+            ],
         },
         {
             "type": InteractionResponseType.CHANNEL_MESSAGE.value,
@@ -83,6 +85,32 @@ test_data = [
             },
         },
     ),
+    (
+        {
+            "id": "44444",
+            "name": "hug",
+            "resolved": {
+                "members": {
+                    "123456789": {
+                        "nick": None,
+                        "roles": [],
+                        "joined_at": "2021-01-04T23:38:01.370760",
+                        "deaf": False,
+                        "mute": False,
+                    }
+                }
+            },
+            "options": [
+                {"name": "cutie", "type": 6, "value": "123456789"},
+            ],
+        },
+        {
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "data": {
+                "content": "<@987654321> *hugs* <@123456789>",
+            },
+        },
+    ),
 ]
 
 
@@ -101,6 +129,11 @@ def test_commands(app: Flask, data: Tuple[dict, dict]):
         "guild_id": "22222",
         "channel_id": "33333",
         "member": {
+            "user": {
+                "id": "987654321",
+                "username": "test-user",
+                "discriminator": "1234",
+            },
             "nick": None,
             "roles": [],
             "joined_at": "2021-01-04T23:38:01.370760",

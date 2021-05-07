@@ -23,7 +23,7 @@ from .application_command import (
 )
 
 from .permissions import GuildPermissions, Permissions, PermissionType
-from .member import Member, User, UserFlags, PremiumType
+from .models import Member, User, UserFlags, PremiumType, Role, ChannelType, Channel
 from .client import ApplicationClient, InteractionClient
 from .utils import verify_key
 

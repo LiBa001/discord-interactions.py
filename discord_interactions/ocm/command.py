@@ -27,6 +27,9 @@ SOFTWARE.
 from discord_interactions import (
     Interaction,
     Member,
+    User,
+    Channel,
+    Role,
     ApplicationCommandInteractionDataOption,
     ApplicationCommand,
     ApplicationCommandOption,
@@ -76,6 +79,14 @@ class OptionContainerType(type):
                             attr.type = _type
                         elif _type == int:
                             attr.type = ApplicationCommandOptionType.INTEGER
+                        elif _type == bool:
+                            attr.type = ApplicationCommandOptionType.BOOLEAN
+                        elif _type == User or _type == Member:
+                            attr.type = ApplicationCommandOptionType.USER
+                        elif _type == Channel:
+                            attr.type = ApplicationCommandOptionType.CHANNEL
+                        elif _type == Role:
+                            attr.type = ApplicationCommandOptionType.ROLE
                         elif issubclass(_type, OptionChoices):
                             attr.choices = _type
                             _type = type(next(iter(_type)).value)
@@ -207,8 +218,8 @@ class Command(metaclass=CommandType):
         return self.interaction.channel_id
 
     @property
-    def author(self) -> Member:
-        return self.interaction.member
+    def author(self) -> Union[Member, User]:
+        return self.interaction.author
 
     @property
     def interaction_id(self) -> int:
