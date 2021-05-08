@@ -133,13 +133,11 @@ need to run it when you change something about their structure:
     if __name__ == "__main__":
         client = ApplicationClient("BOT_TOKEN")
 
-        # do this for all registered commands that we provided structural information for
-        for cmd in interactions.commands:
-            print("create", cmd.name)
-
-            # You might specify a guild here.
-            # Global commands can take up to one hour to be available after registration.
-            client.create_command(cmd)
+        # Do a bulk overwrite for all commands that are registered at the 'interactions'
+        # object to apply all the changes you made to your commands.
+        # You might also specify a guild here (especially for testing), since
+        # global commands can take up to one hour to be available after registration.
+        client.bulk_overwrite_commands(interactions.commands)
 
 .. note::
     You don't necessarily need the flask extension to register commands at Discord,
