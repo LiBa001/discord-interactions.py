@@ -174,7 +174,7 @@ application to the ``Interactions`` constructor.
 
     @interactions.command("delay")
     def delay(_: Interaction):
-        return None
+        return "starting countdown", True  # this message is ephemeral
 
 
     @delay.after_command
