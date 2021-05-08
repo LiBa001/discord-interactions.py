@@ -42,10 +42,12 @@ class DictConvertible(Protocol):
 
 class InteractionResponseType(Enum):
     PONG = 1
-    ACKNOWLEDGE = 2
-    CHANNEL_MESSAGE = 3
-    CHANNEL_MESSAGE_WITH_SOURCE = 4
-    ACKNOWLEDGE_WITH_SOURCE = 5
+    CHANNEL_MESSAGE = 4
+    DEFERRED_CHANNEL_MESSAGE = 5
+
+
+class ResponseFlags(Enum):
+    EPHEMERAL = 64
 
 
 @dataclass()
@@ -54,20 +56,29 @@ class InteractionApplicationCommandCallbackData:
     The data that is sent in an :class:`InteractionResponse`.
     """
 
-    content: str
+    content: str = None
     tts: bool = False
     embeds: List[DictConvertible] = None
     allowed_mentions: DictConvertible = None
+    flags: List[ResponseFlags] = None
+
+    @staticmethod
+    def _flags_to_int(flags: List[ResponseFlags]) -> int:
+        return sum(map(lambda flag: flag.value, flags))
 
     def to_dict(self) -> dict:
-        data = {"content": str(self.content)}
+        data = {}
 
+        if self.content:
+            data["content"] = str(self.content)
         if self.tts:
             data["tts"] = self.tts
         if self.embeds:
             data["embeds"] = [embed.to_dict() for embed in self.embeds]
         if self.allowed_mentions:
             data["allowed_mentions"] = self.allowed_mentions.to_dict()
+        if self.flags:
+            data["flags"] = self._flags_to_int(self.flags)
 
         return data
 

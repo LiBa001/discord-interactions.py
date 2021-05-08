@@ -14,10 +14,11 @@ test_data = [
         {
             "id": "44444",
             "name": "ping",
+            "resolved": {},
             "options": [],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {"content": "pong"},
         },
     ),
@@ -25,7 +26,10 @@ test_data = [
         {
             "id": "44444",
             "name": "echo",
-            "options": [{"name": "message", "value": "this is a test message"}],
+            "resolved": {},
+            "options": [
+                {"name": "message", "type": 3, "value": "this is a test message"}
+            ],
         },
         {
             "type": InteractionResponseType.CHANNEL_MESSAGE.value,
@@ -38,10 +42,11 @@ test_data = [
         {
             "id": "44444",
             "name": "rps",
-            "options": [{"name": "symbol", "value": "paper"}],
+            "resolved": {},
+            "options": [{"name": "symbol", "type": 3, "value": "paper"}],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
@@ -51,13 +56,14 @@ test_data = [
         {
             "id": "44444",
             "name": "guess",
+            "resolved": {},
             "options": [
-                {"name": "number", "value": 42},
-                {"name": "max_num", "value": 69},
+                {"name": "number", "type": 4, "value": 42},
+                {"name": "max_num", "type": 4, "value": 69},
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
@@ -67,14 +73,41 @@ test_data = [
         {
             "id": "44444",
             "name": "guess",
+            "resolved": {},
             "options": [
-                {"name": "number", "value": 7},
+                {"name": "number", "type": 4, "value": 7},
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
+            },
+        },
+    ),
+    (
+        {
+            "id": "44444",
+            "name": "hug",
+            "resolved": {
+                "members": {
+                    "123456789": {
+                        "nick": None,
+                        "roles": [],
+                        "joined_at": "2021-01-04T23:38:01.370760",
+                        "deaf": False,
+                        "mute": False,
+                    }
+                }
+            },
+            "options": [
+                {"name": "cutie", "type": 6, "value": "123456789"},
+            ],
+        },
+        {
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "data": {
+                "content": "<@987654321> *hugs* <@123456789>",
             },
         },
     ),
@@ -90,11 +123,17 @@ def test_commands(app: Flask, data: Tuple[dict, dict]):
 
     interaction = {
         "id": "11111",
+        "application_id": "55555",
         "type": InteractionType.APPLICATION_COMMAND.value,
         "data": data[0],
         "guild_id": "22222",
         "channel_id": "33333",
         "member": {
+            "user": {
+                "id": "987654321",
+                "username": "test-user",
+                "discriminator": "1234",
+            },
             "nick": None,
             "roles": [],
             "joined_at": "2021-01-04T23:38:01.370760",

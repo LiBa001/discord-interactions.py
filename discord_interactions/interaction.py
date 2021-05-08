@@ -26,13 +26,26 @@ SOFTWARE.
 
 import json
 from enum import Enum
-from .member import Member
-from typing import Union
+from .models import User, Member, Role, Channel
+from .application_command import ApplicationCommandOptionType
+from typing import Union, Optional
 
 
 class InteractionType(Enum):
     PING = 1
     APPLICATION_COMMAND = 2
+
+
+class ApplicationCommandInteractionDataResolved:
+    def __init__(self, **kwargs):
+        self.users = {u_id: User(**u) for u_id, u in kwargs.get("users", {}).items()}
+        self.members = {
+            m_id: Member(**m) for m_id, m in kwargs.get("members", {}).items()
+        }
+        self.roles = {r_id: Role(**r) for r_id, r in kwargs.get("roles", {}).items()}
+        self.channels = {
+            c_id: Channel(**c) for c_id, c in kwargs.get("channels", {}).items()
+        }
 
 
 class _OptionGetter:
@@ -52,6 +65,7 @@ class _OptionGetter:
 class ApplicationCommandInteractionDataOption(_OptionGetter):
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
+        self.type = ApplicationCommandOptionType(kwargs["type"])
         self.value = kwargs.get("value")
         self.options = [
             ApplicationCommandInteractionDataOption(**option)
@@ -69,6 +83,9 @@ class ApplicationCommandInteractionData(_OptionGetter):
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
         self.name = kwargs["name"]
+        self.resolved = ApplicationCommandInteractionDataResolved(
+            **kwargs.get("resolved", {})
+        )
         self.options = [
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
@@ -89,15 +106,17 @@ class Interaction:
 
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
+        self.application_id = int(kwargs["application_id"])
         self.type = InteractionType(kwargs["type"])
 
         if self.type == InteractionType.PING:
             return
 
         self.data = INTERACTION_TYPE_MAP[self.type](**kwargs.get("data", {}))
-        self.guild_id = int(kwargs["guild_id"])
-        self.channel_id = int(kwargs["channel_id"])
-        self.member = Member(**kwargs["member"])
+        self.guild_id = int(kwargs.get("guild_id", 0)) or None
+        self.channel_id = int(kwargs.get("channel_id", 0)) or None
+        self.member = Member(**kwargs["member"]) if "member" in kwargs else None
+        self.user = User(**kwargs["user"]) if "user" in kwargs else None
         self.token = kwargs["token"]
         self.version = int(kwargs["version"])
 
@@ -116,3 +135,19 @@ class Interaction:
             data = json.loads(data)
 
         return cls(**data)
+
+    @property
+    def author(self) -> Union[Member, User]:
+        return self.member or self.user
+
+    def get_user(self, user_id: int) -> Optional[User]:
+        return self.data.resolved.users.get(user_id)
+
+    def get_member(self, member_id: int) -> Optional[Member]:
+        return self.data.resolved.members.get(member_id)
+
+    def get_role(self, role_id: int) -> Optional[Role]:
+        return self.data.resolved.roles.get(role_id)
+
+    def get_channel(self, channel_id: int) -> Optional[Channel]:
+        return self.data.resolved.channels.get(channel_id)
