@@ -1,9 +1,10 @@
 from discord_interactions.flask_ext import Interactions, CommandContext
-from discord_interactions.ocm import Command, Option, OptionChoices
+from discord_interactions.ocm import Command, SubCommand, Option, OptionChoices
 from discord_interactions import User
 from flask import Flask
 import os
 import random
+import hashlib
 
 app = Flask(__name__)
 interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
@@ -43,6 +44,18 @@ class Hug(Command):
     """ Hug someone nice """
 
     cutie: User = Option("hug this person", required=True)
+
+
+class Sha1(SubCommand):
+    """ Generate a SHA1 hash """
+
+    text: str = Option("the text to be hashed", required=True)
+
+
+class Generate(Command):
+    """ Generate different things """
+
+    sha1 = Sha1()
 
 
 @interactions.command
@@ -100,6 +113,15 @@ def guess(ctx: CommandContext, guessed_num, min_num=None, max_num=None):
 @interactions.command
 def hug(cmd: Hug):
     return f"<@{cmd.author.id}> *hugs* <@{cmd.cutie}>"
+
+
+@interactions.command
+def generate(cmd: Generate):
+    if cmd.sha1:
+        txt = cmd.sha1.text
+        return f'"{txt}"\n=> `{hashlib.sha1(txt.encode()).hexdigest()}`', True
+    else:
+        return "error: no subcommand provided", True
 
 
 if __name__ == "__main__":

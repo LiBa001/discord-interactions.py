@@ -120,7 +120,7 @@ class Option(_Option, metaclass=OptionContainerType):
         if not self.is_sub_command:
             data = (
                 getattr(instance, "_Command__interaction").data
-                if not isinstance(self, owner)
+                if not issubclass(owner, Option)
                 else instance.__data
             )
 
@@ -142,7 +142,10 @@ class Option(_Option, metaclass=OptionContainerType):
                     instance, "_Command__interaction"
                 ).data.get_option(self.name)
             self.__data_loaded = True
-        return self.__data
+        return self
+
+    def __bool__(self):
+        return self.__data is not None
 
     def to_application_command_option(self) -> ApplicationCommandOption:
         options = []
@@ -250,4 +253,18 @@ class Command(metaclass=CommandType):
             name=cls.__cmd_name__,
             description=cls.__cmd_description__,
             options=options or None,
+        )
+
+
+class SubCommand(Option):
+    def __init__(self, **kwargs):
+        super().__init__(
+            self.__doc__, ApplicationCommandOptionType.SUB_COMMAND, **kwargs
+        )
+
+
+class SubCommandGroup(Option):
+    def __init__(self, **kwargs):
+        super().__init__(
+            self.__doc__, ApplicationCommandOptionType.SUB_COMMAND_GROUP, **kwargs
         )
