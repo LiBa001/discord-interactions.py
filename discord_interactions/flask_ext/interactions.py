@@ -84,7 +84,7 @@ class Interactions:
         self._path = path
 
         app.add_url_rule(path, "interactions", self._main, methods=["POST"])
-        app.after_request_funcs = {None: [self._after_request]}
+        app.after_request_funcs["interactions"] = self._after_request
 
         self._commands: Dict[str, CommandData] = {}
 
