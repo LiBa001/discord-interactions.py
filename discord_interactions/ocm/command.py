@@ -105,7 +105,6 @@ class Option(_Option, metaclass=OptionContainerType):
     required: bool = False
     choices: Union[Type[OptionChoices], dict] = None
     __data: ApplicationCommandInteractionDataOption = None
-    __data_loaded: bool = False
 
     @property
     def is_sub_command(self):
@@ -134,15 +133,14 @@ class Option(_Option, metaclass=OptionContainerType):
             else:
                 return None
 
-        if not self.__data_loaded:
+        else:
             if isinstance(self, owner):
                 self.__data = instance.__data.get_option(self.name)
             else:
                 self.__data = getattr(
                     instance, "_Command__interaction"
                 ).data.get_option(self.name)
-            self.__data_loaded = True
-        return self
+            return self
 
     def __bool__(self):
         return self.__data is not None
