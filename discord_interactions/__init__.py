@@ -9,7 +9,7 @@ from .interaction import (
 
 from .interaction_response import (
     InteractionResponse,
-    InteractionResponseType,
+    InteractionCallbackType,
     ResponseFlags,
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
@@ -20,6 +20,15 @@ from .application_command import (
     ApplicationCommandOption,
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
+)
+
+from .message_component import (
+    Component,
+    ComponentType,
+    ButtonStyle,
+    ActionRow,
+    Button,
+    LinkButton,
 )
 
 from .permissions import GuildPermissions, Permissions, PermissionType

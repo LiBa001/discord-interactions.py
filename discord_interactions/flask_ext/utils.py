@@ -25,7 +25,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from discord_interactions import InteractionType, InteractionResponseType, verify_key
+from discord_interactions import InteractionType, InteractionCallbackType, verify_key
 from flask import request, jsonify
 from functools import wraps
 
@@ -47,7 +47,7 @@ def verify_key_decorator(client_public_key):
 
             # Automatically respond to pings
             if request.json and request.json.get("type") == InteractionType.PING:
-                return jsonify({"type": InteractionResponseType.PONG})
+                return jsonify({"type": InteractionCallbackType.PONG})
 
             # Pass through
             return f(*args, **kwargs)

@@ -34,6 +34,7 @@ from typing import Union, Optional
 class InteractionType(Enum):
     PING = 1
     APPLICATION_COMMAND = 2
+    MESSAGE_COMPONENT = 3
 
 
 class ApplicationCommandInteractionDataResolved:
@@ -90,6 +91,8 @@ class ApplicationCommandInteractionData(_OptionGetter):
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
         ]
+        self.custom_id = kwargs.get("custom_id")
+        self.component_type = kwargs.get("component_type")
 
 
 INTERACTION_TYPE_MAP = {
@@ -119,6 +122,7 @@ class Interaction:
         self.user = User(**kwargs["user"]) if "user" in kwargs else None
         self.token = kwargs["token"]
         self.version = int(kwargs["version"])
+        self.message = kwargs.get("message")  # TODO: convert to Message object
 
     @classmethod
     def from_json(cls, data: Union[dict, str]) -> "Interaction":

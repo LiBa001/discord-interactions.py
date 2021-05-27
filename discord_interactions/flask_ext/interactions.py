@@ -29,7 +29,7 @@ from discord_interactions import (
     Interaction,
     InteractionType,
     InteractionResponse,
-    InteractionResponseType,
+    InteractionCallbackType,
     ResponseFlags,
     InteractionApplicationCommandCallbackData,
     verify_key,
@@ -130,7 +130,7 @@ class Interactions:
         interaction = Interaction(**request.json)
 
         if interaction.type == InteractionType.PING:
-            return jsonify(InteractionResponse(InteractionResponseType.PONG).to_dict())
+            return jsonify(InteractionResponse(InteractionCallbackType.PONG).to_dict())
         elif interaction.type == InteractionType.APPLICATION_COMMAND:
             cmd = interaction.data.name
             cb = self._commands[cmd].callback
@@ -172,14 +172,14 @@ class Interactions:
                     resp, ephemeral = resp
 
                 if resp is None:
-                    r_type = InteractionResponseType.DEFERRED_CHANNEL_MESSAGE
+                    r_type = InteractionCallbackType.DEFERRED_CHANNEL_MESSAGE
                     r_data = None
                     if ephemeral:
                         r_data = InteractionApplicationCommandCallbackData(
                             flags=[ResponseFlags.EPHEMERAL]
                         )
                 else:
-                    r_type = InteractionResponseType.CHANNEL_MESSAGE
+                    r_type = InteractionCallbackType.CHANNEL_MESSAGE
                     r_data = InteractionApplicationCommandCallbackData(str(resp))
                     if ephemeral:
                         r_data.flags = [ResponseFlags.EPHEMERAL]

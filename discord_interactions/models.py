@@ -214,3 +214,6 @@ class Channel:
         self.member_count = data.get("member_count")
         self.thread_metadata = data.get("thread_metadata")
         self.member = data.get("member")
+
+
+# TODO: add Message class (for message component interactions)

@@ -40,10 +40,12 @@ class DictConvertible(Protocol):
         ...
 
 
-class InteractionResponseType(Enum):
+class InteractionCallbackType(Enum):
     PONG = 1
     CHANNEL_MESSAGE = 4
     DEFERRED_CHANNEL_MESSAGE = 5
+    DEFERRED_UPDATE_MESSAGE = 6
+    UPDATE_MESSAGE = 7
 
 
 class ResponseFlags(Enum):
@@ -89,7 +91,7 @@ class InteractionResponse:
     Represents a basic response to a received :class:`Interaction`.
     """
 
-    type: InteractionResponseType
+    type: InteractionCallbackType
     data: InteractionApplicationCommandCallbackData = None
 
     def to_dict(self) -> dict:

@@ -4,7 +4,7 @@ from typing import Tuple, TypeVar
 
 from examples import flask_webhook, flask_webhook_ocm
 
-from discord_interactions import InteractionType, InteractionResponseType
+from discord_interactions import InteractionType, InteractionCallbackType
 
 DO_NOT_VALIDATE = TypeVar("DO_NOT_VALIDATE")
 
@@ -18,7 +18,7 @@ test_data = [
             "options": [],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {"content": "pong"},
         },
     ),
@@ -32,7 +32,7 @@ test_data = [
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": "this is a test message",
             },
@@ -46,7 +46,7 @@ test_data = [
             "options": [{"name": "symbol", "type": 3, "value": "paper"}],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
@@ -63,7 +63,7 @@ test_data = [
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
@@ -79,7 +79,7 @@ test_data = [
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": DO_NOT_VALIDATE,
             },
@@ -105,7 +105,7 @@ test_data = [
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": "<@987654321> *hugs* <@123456789>",
             },
@@ -125,7 +125,7 @@ test_data = [
             ],
         },
         {
-            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": '"hello world"\n=> `2aae6c35c94fcfb415dbe95f408b9ce91ee846ed`',
                 "flags": 64,
