@@ -30,7 +30,15 @@ from datetime import datetime
 from enum import Enum
 
 
-class UserFlags(Enum):
+class UserFlag(Enum):
+    """
+    Represents a flag of a Discord :class:`User`.
+
+    See
+    https://discord.com/developers/docs/resources/user#user-object-user-flags
+    for reference.
+    """
+
     staff = 1
     partner = 2
     hypesquad = 4
@@ -50,11 +58,26 @@ class UserFlags(Enum):
 
 
 class PremiumType(Enum):
+    """
+    Represents the premium type of a Discord :class:`User`.
+
+    See
+    https://discord.com/developers/docs/resources/user#user-object-premium-types
+    for reference.
+    """
+
     nitro_classic = 1
     nitro = 2
 
 
 class User:
+    """
+    Represents a Discord user.
+
+    See https://discord.com/developers/docs/resources/user#user-object
+    for reference.
+    """
+
     def __init__(self, **data):
         self.id = int(data["id"])
         self.username = data["username"]
@@ -75,11 +98,11 @@ class User:
         self.public_flags = self._parse_flags(int(data.get("public_flags", 0)))
 
     @staticmethod
-    def _parse_flags(flags: int) -> List[UserFlags]:
-        return [flag for flag in UserFlags if flags & flag.value != 0]
+    def _parse_flags(flags: int) -> List[UserFlag]:
+        return [flag for flag in UserFlag if flags & flag.value != 0]
 
     @staticmethod
-    def _flags_to_int(flags: List[UserFlags]) -> int:
+    def _flags_to_int(flags: List[UserFlag]) -> int:
         return sum(map(lambda flag: flag.value, flags))
 
     def to_dict(self) -> dict:
@@ -114,6 +137,13 @@ class User:
 
 
 class Member:
+    """
+    Represents a Discord guild member.
+
+    See https://discord.com/developers/docs/resources/guild#guild-member-object
+    for reference.
+    """
+
     def __init__(self, **data):
         self.user = None
         if user_data := data.get("user"):
@@ -157,6 +187,13 @@ class Member:
 
 
 class Role:
+    """
+    Represents a Discord role.
+
+    See https://discord.com/developers/docs/topics/permissions#role-object
+    for reference.
+    """
+
     def __init__(self, **data):
         self.id = int(data["id"])
         self.name = data["name"]
@@ -170,6 +207,14 @@ class Role:
 
 
 class ChannelType(Enum):
+    """
+    Represents the type of a Discord :class:`Channel`.
+
+    See
+    https://discord.com/developers/docs/resources/channel#channel-object-channel-types
+    for reference.
+    """
+
     GUILD_TEXT = 0
     DM = 1
     VOICE = 2
@@ -184,11 +229,25 @@ class ChannelType(Enum):
 
 
 class VideoQualityMode(Enum):
+    """
+    Represents the video quality mode of a Discord :class:`Channel`.
+
+    See
+    https://discord.com/developers/docs/resources/channel#channel-object-video-quality-modes
+    for reference.
+    """
+
     AUTO = 1
     FULL = 2
 
 
 class Channel:
+    """
+    Represents a Discord channel.
+
+    See https://discord.com/developers/docs/resources/channel#channel for reference.
+    """
+
     def __init__(self, **data):
         self.id = int(data["id"])
         self.type = ChannelType(data["type"])
@@ -216,4 +275,78 @@ class Channel:
         self.member = data.get("member")
 
 
-# TODO: add Message class (for message component interactions)
+class MessageType(Enum):
+    """
+    Represents the type of a Discord :class:`Message`.
+
+    See
+    https://discord.com/developers/docs/resources/channel#message-object-message-types
+    for reference.
+    """
+
+    DEFAULT = 0
+    RECIPIENT_ADD = 1
+    RECIPIENT_REMOVE = 2
+    CALL = 3
+    CHANNEL_NAME_CHANGE = 4
+    CHANNEL_ICON_CHANGE = 5
+    CHANNEL_PINNED_MESSAGE = 6
+    GUILD_MEMBER_JOIN = 7
+    USER_PREMIUM_GUILD_SUBSCRIPTION = 8
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_1 = 9
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_2 = 10
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_3 = 11
+    CHANNEL_FOLLOW_ADD = 12
+    GUILD_DISCOVERY_DISQUALIFIED = 14
+    GUILD_DISCOVERY_REQUALIFIED = 15
+    GUILD_DISCOVERY_GRACE_PERIOD_INITIAL_WARNING = 16
+    GUILD_DISCOVERY_GRACE_PERIOD_FINAL_WARNING = 17
+    THREAD_CREATED = 18
+    REPLY = 19
+    APPLICATION_COMMAND = 20
+    THREAD_STARTER_MESSAGE = 21
+    GUILD_INVITE_REMINDER = 22
+
+
+class Message:
+    """
+    Represents a Discord message.
+
+    See https://discord.com/developers/docs/resources/channel#message-object
+    for reference.
+    """
+
+    def __init__(self, **data):
+        self.id = int(data["id"])
+        self.channel_id = int(data["channel_id"])
+        self.guild_id = int(data.get("guild_id", 0)) or None
+        self.webhook_id = int(data.get("webhook_id", 0)) or None
+        self.author = User(**data["author"]) if not self.webhook_id else data["author"]
+        self.member = Member(**data["member"]) if "member" in data else None
+        self.content = data["content"]
+        self.timestamp = datetime.fromisoformat(data["timestamp"])
+        # fmt: off
+        self.edited_timestamp = (
+                (t := data["edited_timestamp"]) and datetime.fromisoformat(t)
+        )
+        self.tts = data["tts"]
+        self.mention_everyone = data["mention_everyone"]
+        self.mentions = [User(**u) for u in data["mentions"]]
+        self.mention_roles = [int(r_id) for r_id in data["mention_roles"]]
+        self.mention_channels = data.get("mention_channels")
+        self.attachments = data["attachments"]  # TODO: convert to Attachment object
+        self.embeds = data["embeds"]  # TODO: convert to Embed object
+        self.reactions = data.get("reactions")
+        self.nonce = data.get("nonce")
+        self.pinned = data["pinned"]
+        self.type = MessageType(data["type"])
+        self.activity = data.get("activity")
+        self.application = data.get("application")
+        self.application_id = (a_id := data.get("application_id")) and int(a_id)
+        self.message_reference = data.get("message_reference")
+        self.flags = data.get("flags")
+        self.stickers = data.get("stickers")
+        self.referenced_message = (m := data.get("reference_message")) and Message(**m)
+        self.interaction = data.get("interaction")
+        self.thread = (c := data.get("thread")) and Channel(**c)
+        self.components = data.get("components")  # TODO: convert to component object

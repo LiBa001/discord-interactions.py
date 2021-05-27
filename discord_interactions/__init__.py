@@ -32,7 +32,17 @@ from .message_component import (
 )
 
 from .permissions import GuildPermissions, Permissions, PermissionType
-from .models import Member, User, UserFlags, PremiumType, Role, ChannelType, Channel
+from .models import (
+    Member,
+    User,
+    UserFlag,
+    PremiumType,
+    Role,
+    ChannelType,
+    Channel,
+    MessageType,
+    Message,
+)
 from .client import ApplicationClient, InteractionClient
 from .utils import verify_key
 

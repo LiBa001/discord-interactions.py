@@ -26,7 +26,7 @@ SOFTWARE.
 
 import json
 from enum import Enum
-from .models import User, Member, Role, Channel
+from .models import User, Member, Role, Channel, Message
 from .application_command import ApplicationCommandOptionType
 from typing import Union, Optional
 
@@ -122,7 +122,7 @@ class Interaction:
         self.user = User(**kwargs["user"]) if "user" in kwargs else None
         self.token = kwargs["token"]
         self.version = int(kwargs["version"])
-        self.message = kwargs.get("message")  # TODO: convert to Message object
+        self.message = (m := kwargs.get("message")) and Message(**m)
 
     @classmethod
     def from_json(cls, data: Union[dict, str]) -> "Interaction":
