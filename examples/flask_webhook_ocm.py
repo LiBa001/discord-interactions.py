@@ -116,12 +116,19 @@ def hug(cmd: Hug):
 
 
 @interactions.command
-def generate(cmd: Generate):
-    if cmd.sha1:
-        txt = cmd.sha1.text
-        return f'"{txt}"\n=> `{hashlib.sha1(txt.encode()).hexdigest()}`', True
-    else:
-        return "error: no subcommand provided", True
+def generate(_: Generate):
+    pass  # this function gets called before any subcommands
+
+
+@generate.subcommand()
+def sha1(_: CommandContext, cmd: Sha1):
+    txt = cmd.text
+    return f'"{txt}"\n=> `{hashlib.sha1(txt.encode()).hexdigest()}`', True
+
+
+@generate.fallback
+def generate_fallback(_: CommandContext):
+    return "error: no subcommand provided", True
 
 
 if __name__ == "__main__":

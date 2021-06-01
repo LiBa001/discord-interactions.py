@@ -32,6 +32,7 @@ from discord_interactions import (
     InteractionResponseType,
     ResponseFlags,
     InteractionApplicationCommandCallbackData,
+    ApplicationCommandInteractionDataOption,
     verify_key,
     ApplicationCommand,
     ApplicationClient,
@@ -48,7 +49,7 @@ _CommandCallbackReturnType = Union[
 ]
 _CommandCallback = Union[
     Callable[
-        [Union[Interaction, ocm.Command]],
+        [Union[Interaction, ocm.Command, ocm.Option]],
         _CommandCallbackReturnType,
     ],
     Callable[[CommandContext, Any], _CommandCallbackReturnType],
@@ -57,12 +58,29 @@ _AfterCommandCallback = Callable[[AfterCommandContext], None]
 _DecoratedCommand = Union[ApplicationCommand, str, _CommandCallback, Type[ocm.Command]]
 
 
-class CommandData:
-    def __init__(self, name: str, cb: _CommandCallback, cmd: ApplicationCommand = None):
+class SubCommandData:
+    """
+    Stores and handles registering callbacks for a registered
+    subcommand or subcommand group.
+
+    :type name: str
+    :param name: Name of the subcommand (group).
+
+    :param cb:
+        The function to be called when the subcommand or
+        a subcommand in the subcommand group is invoked.
+    """
+
+    def __init__(self, name: str, cb: _CommandCallback):
         self.name = name
         self.callback = cb
-        self.application_command = cmd
         self.after_callback = None
+        self.fallback_callback = None
+        self._subcommands: Dict[str, SubCommandData] = {}
+
+    @property
+    def subcommands(self) -> Dict[str, "SubCommandData"]:
+        return self._subcommands
 
     def after_command(self, f: _AfterCommandCallback):
         """
@@ -72,6 +90,81 @@ class CommandData:
         """
 
         self.after_callback = f
+
+    def register_subcommand(
+        self, name: str, callback: _CommandCallback
+    ) -> "SubCommandData":
+        """
+        Register a callback for a subcommand or subcommand group to the parent
+        command, subcommand or subcommand group.
+
+        :type name: `str`
+        :param name:
+            The name of the subcommand or subcommand group.
+
+        :type callback: `callable`
+        :param callback:
+            The function to register as a callback.
+
+        :rtype: :class:`SubCommandData`
+        :return:
+            An object that can be used to register further callbacks for the subcommand,
+            subcommand group or it's children.
+        """
+
+        cmd = SubCommandData(name, callback)
+        self._subcommands[name] = cmd
+        return cmd
+
+    def subcommand(
+        self, name: str = ""
+    ) -> Callable[[_CommandCallback], "SubCommandData"]:
+        """
+        A decorator to register callbacks for subcommands or subcommand groups to the
+        parent.
+        Calls :meth:`register_subcommand` internally.
+
+        :type name: `str`
+        :param name:
+            The subcommands name.
+            If left empty, the name will be derived from the function name.
+
+        :return: The actual decorator.
+        """
+
+        def decorator(f: _CommandCallback):
+            return self.register_subcommand(name or f.__name__.lower().strip("_"), f)
+
+        return decorator
+
+    def fallback(self, f: Callable):
+        """
+        A decorator to register a fallback callback function that will be called for
+        all subcommands that don't have their own callback registered
+        or if no subcommand was provided at all (this case should never occur).
+
+        :param f: The callback function.
+        """
+
+        self.fallback_callback = f
+
+
+class CommandData(SubCommandData):
+    """
+    Stores and handles registering callbacks for a registered command.
+
+    :type name: str
+    :param name: Name of the command.
+
+    :param cb: The function to be called when the command is invoked.
+
+    :type cmd: Optional[:class:`ApplicationCommand`]
+    :param cmd: The object storing structural information for the command.
+    """
+
+    def __init__(self, name: str, cb: _CommandCallback, cmd: ApplicationCommand = None):
+        super().__init__(name, cb)
+        self.application_command = cmd
 
 
 class Interactions:
@@ -102,11 +195,27 @@ class Interactions:
             if cmd.application_command is not None
         ]
 
-    def create_commands(self, client: ApplicationClient, guild: int = None):
-        """ Create all registered commands as application commands at Discord. """
+    def publish_commands(self, client: ApplicationClient, guild: int = None):
+        """
+        Create all registered commands as application commands at Discord.
 
-        for cmd in self.commands:
-            client.create_command(cmd, guild=guild)
+        .. Note::
+            This performs a bulk overwrite, which means that currently registered
+            commands that are not registered to the :class:`Interactions` object will be
+            deleted. If you only want to create specific commands, use
+            :meth:`ApplicationClient.create_command`.
+
+        :type client: :class:`ApplicationClient`
+        :param client:
+            The application client to use for registering the commands at Discord.
+
+        :type guild: int
+        :param guild:
+            ID of the optional guild to register the commands at.
+            Commands will be registered globally if left `None`.
+        """
+
+        client.bulk_overwrite_commands(self.commands, guild=guild)
 
     def _verify_request(self):
         signature = request.headers.get("X-Signature-Ed25519")
@@ -130,39 +239,47 @@ class Interactions:
         interaction = Interaction(**request.json)
 
         if interaction.type == InteractionType.PING:
+            # handle a ping
             return jsonify(InteractionResponse(InteractionResponseType.PONG).to_dict())
         elif interaction.type == InteractionType.APPLICATION_COMMAND:
-            cmd = interaction.data.name
-            cb = self._commands[cmd].callback
+            # handle an application command (slash command)
+            cmd_name = interaction.data.name
+            cb = self._commands[cmd_name].callback
+            ctx = CommandContext(interaction)
+            cmd: Optional[ocm.Command] = None
 
-            if cb.__code__.co_argcount > 1:  # if the cb takes more than one argument
-                ctx = CommandContext(interaction)
-                arg_diff = cb.__code__.co_argcount - (len(interaction.data.options) + 1)
-                num_kwargs = len(cb.__defaults__ or ())
-                if 1 < num_kwargs > arg_diff > 0:
-                    # if not all arguments can be passed by position
-                    cb_args = interaction.data.options[:-arg_diff]
-                    cb_kwargs = interaction.data.options[-arg_diff:]
-                else:
-                    cb_args = interaction.data.options
-                    cb_kwargs = []
-                resp = cb(
-                    ctx,
-                    *[o.value for o in cb_args],
-                    **{o.name: o.value for o in cb_kwargs},
-                )
+            if cb.__code__.co_argcount > 1:
+                # the cb takes more than one argument; pass them
+                args, kwargs = self._get_cb_args_kwargs(cb, interaction.data.options)
+                resp = cb(ctx, *args, **kwargs)
             else:
+                # callback takes only one argument; figure out it's type
                 cb_data = interaction
                 if len(annotations := cb.__annotations__.values()) > 0:
                     cmd_type = next(iter(annotations))
                     if issubclass(cmd_type, ocm.Command):
-                        cb_data = cmd_type.wrap(interaction)
+                        cb_data = cmd = cmd_type.wrap(interaction)
                     elif issubclass(cmd_type, CommandContext):
-                        cb_data = cmd_type(interaction)
+                        cb_data = ctx = cmd_type(interaction)
 
                 resp = cb(cb_data)
 
+            # figure out whether to call subcommands
+            if resp is None and len(interaction.data.options) == 1:
+                option = interaction.data.options[0]
+                if option.is_sub_command:
+                    sub_cmd_data = self._commands[cmd_name].subcommands[option.name]
+                    if cmd is None:
+                        ocm_sub = ocm.Option(name=option.name, description="", type=option.type)
+                        ocm_sub.__data = option
+                    else:
+                        print(getattr(cmd, "sha1"))
+                        ocm_sub = cmd.get_options()[option.name]
+                    resp = self._handle_subcommand(ctx, option, sub_cmd_data, ocm_sub)
+
+            # build the actual interaction response
             if isinstance(resp, InteractionResponse):
+                # response is already provided
                 interaction_response = resp
             else:
                 # figure out what the response should look like
@@ -196,6 +313,58 @@ class Interactions:
 
         else:
             return "Unknown interaction type", 501
+
+    @staticmethod
+    def _get_cb_args_kwargs(
+        cb, options: List[ApplicationCommandInteractionDataOption]
+    ) -> Tuple[list, dict]:
+        arg_diff = cb.__code__.co_argcount - (len(options) + 1)
+        num_kwargs = len(cb.__defaults__ or ())
+        if 1 < num_kwargs > arg_diff > 0:
+            # if not all arguments can be passed by position
+            cb_args = options[:-arg_diff]
+            cb_kwargs = options[-arg_diff:]
+        else:
+            cb_args = options
+            cb_kwargs = []
+        return [o.value for o in cb_args], {o.name: o.value for o in cb_kwargs}
+
+    @classmethod
+    def _handle_subcommand(
+        cls,
+        ctx: CommandContext,
+        interaction_sub: ApplicationCommandInteractionDataOption,
+        data: SubCommandData,
+        ocm_sub: ocm.Option,
+    ) -> _CommandCallbackReturnType:
+        cb = data.callback
+
+        if cb.__code__.co_argcount > 2:
+            args, kwargs = cls._get_cb_args_kwargs(cb, interaction_sub.options)
+            resp = cb(ctx, *args, **kwargs)
+        else:
+            # callback takes only one argument; figure out it's type
+            cb_data = interaction_sub
+            if len(annotations := cb.__annotations__) > 0:
+                cb_data_arg_name = cb.__code__.co_varnames[cb.__code__.co_argcount - 1]
+                cmd_type = annotations[cb_data_arg_name]
+                if issubclass(cmd_type, ocm.Option):
+                    cb_data = ocm_sub
+            resp = cb(ctx, cb_data)
+
+        if resp is None and len(interaction_sub.options) == 1:
+            option = interaction_sub.options[0]
+            if option.is_sub_command:
+                sub_cmd_data = data.subcommands.get(option.name)
+                if sub_cmd_data is None:
+                    # try to call fallback if subcommand callback is not registered
+                    if data.fallback_callback is not None:
+                        resp = data.fallback_callback(ctx)
+                else:
+                    ocm_sub = ocm_sub.get_options()[option.name]
+                    resp = cls._handle_subcommand(ctx, option, sub_cmd_data, ocm_sub)
+
+        return resp
 
     def _after_request(self, response: Response):
         interaction = g.interaction
