@@ -48,8 +48,9 @@ _CommandCallbackReturnType = Union[
     InteractionResponse, str, None, Tuple[Optional[str], bool]
 ]
 _CommandCallback = Union[
+    Callable[[], _CommandCallbackReturnType],
     Callable[
-        [Union[Interaction, ocm.Command, ocm.Option]],
+        [Union[Interaction, ocm.Command, ocm.Option, CommandContext]],
         _CommandCallbackReturnType,
     ],
     Callable[[CommandContext, Any], _CommandCallbackReturnType],
@@ -252,7 +253,7 @@ class Interactions:
                 # the cb takes more than one argument; pass them
                 args, kwargs = self._get_cb_args_kwargs(cb, interaction.data.options)
                 resp = cb(ctx, *args, **kwargs)
-            else:
+            elif cb.__code__.co_argcount == 1:
                 # callback takes only one argument; figure out it's type
                 cb_data = interaction
                 if len(annotations := cb.__annotations__.values()) > 0:
@@ -263,19 +264,29 @@ class Interactions:
                         cb_data = ctx = cmd_type(interaction)
 
                 resp = cb(cb_data)
+            else:
+                resp = cb()
 
             # figure out whether to call subcommands
             if resp is None and len(interaction.data.options) == 1:
                 option = interaction.data.options[0]
                 if option.is_sub_command:
-                    sub_cmd_data = self._commands[cmd_name].subcommands[option.name]
-                    if cmd is None:
-                        ocm_sub = ocm.Option(name=option.name, description="", type=option.type)
-                        ocm_sub.__data = option
+                    sub_cmd_data = self._commands[cmd_name].subcommands.get(option.name)
+                    if sub_cmd_data is None:
+                        # no callback registered for subcommand; try fallback
+                        if self._commands[cmd_name].fallback_callback is not None:
+                            resp = self._commands[cmd_name].fallback_callback(ctx)
                     else:
-                        print(getattr(cmd, "sha1"))
-                        ocm_sub = cmd.get_options()[option.name]
-                    resp = self._handle_subcommand(ctx, option, sub_cmd_data, ocm_sub)
+                        if cmd is None:
+                            ocm_sub = ocm.Option(
+                                name=option.name, description="", type=option.type
+                            )
+                            ocm_sub.__data = option
+                        else:
+                            ocm_sub = cmd.get_options()[option.name]
+                        resp = self._handle_subcommand(
+                            ctx, option, sub_cmd_data, ocm_sub
+                        )
 
             # build the actual interaction response
             if isinstance(resp, InteractionResponse):
@@ -337,20 +348,27 @@ class Interactions:
         data: SubCommandData,
         ocm_sub: ocm.Option,
     ) -> _CommandCallbackReturnType:
-        cb = data.callback
+        """ Handle calling registered callbacks corresponding to invoked subcommands """
 
-        if cb.__code__.co_argcount > 2:
+        cb = data.callback
+        arg_count = cb.__code__.co_argcount
+
+        if arg_count > 2:
             args, kwargs = cls._get_cb_args_kwargs(cb, interaction_sub.options)
             resp = cb(ctx, *args, **kwargs)
-        else:
+        elif arg_count == 2:
             # callback takes only one argument; figure out it's type
             cb_data = interaction_sub
             if len(annotations := cb.__annotations__) > 0:
-                cb_data_arg_name = cb.__code__.co_varnames[cb.__code__.co_argcount - 1]
+                cb_data_arg_name = cb.__code__.co_varnames[arg_count - 1]
                 cmd_type = annotations[cb_data_arg_name]
                 if issubclass(cmd_type, ocm.Option):
                     cb_data = ocm_sub
             resp = cb(ctx, cb_data)
+        elif arg_count == 1:
+            resp = cb(ctx)
+        else:
+            resp = cb()
 
         if resp is None and len(interaction_sub.options) == 1:
             option = interaction_sub.options[0]
