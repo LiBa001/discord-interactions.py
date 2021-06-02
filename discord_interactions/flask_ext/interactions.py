@@ -40,7 +40,7 @@ from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
 from threading import Thread
 
-from .context import AfterCommandContext, CommandContext
+from .context import AfterCommandContext, CommandContext, ComponentContext
 
 
 _CommandCallbackReturnType = Union[
@@ -87,6 +87,7 @@ class Interactions:
         app.after_request_funcs["interactions"] = self._after_request
 
         self._commands: Dict[str, CommandData] = {}
+        self._components: Dict[str, Callable] = {}
 
     @property
     def path(self) -> str:
@@ -194,6 +195,30 @@ class Interactions:
 
             return jsonify(interaction_response.to_dict())
 
+        elif interaction.type == InteractionType.MESSAGE_COMPONENT:
+            # a message component has been interacted with (e.g. button clicked)
+            ctx = ComponentContext(interaction)
+            cb = self._components.get(ctx.custom_id)
+            resp = cb(ctx)  # call the callback
+
+            if isinstance(resp, InteractionResponse):
+                interaction_response = resp
+            elif resp is None:
+                interaction_response = InteractionResponse(
+                    InteractionCallbackType.DEFERRED_UPDATE_MESSAGE
+                )
+            else:
+                r_data = InteractionApplicationCommandCallbackData(content=resp)
+
+                interaction_response = InteractionResponse(
+                    InteractionCallbackType.UPDATE_MESSAGE, r_data
+                )
+
+            g.interaction = interaction
+            g.interaction_response = interaction_response
+
+            return jsonify(interaction_response.to_dict())
+
         else:
             return "Unknown interaction type", 501
 
@@ -273,3 +298,12 @@ class Interactions:
                 return self.register_command(f.__name__.lower().strip("_"), f)
 
         return decorator(_f) if _f is not None else decorator
+
+    def register_component(self, component_id: str, callback: Callable):
+        self._components[component_id] = callback
+
+    def component(self, component_id: str):
+        def decorator(f: Callable):
+            self.register_component(component_id, f)
+
+        return decorator

@@ -28,6 +28,7 @@ import json
 from enum import Enum
 from .models import User, Member, Role, Channel, Message
 from .application_command import ApplicationCommandOptionType
+from .message_component import ComponentType
 from typing import Union, Optional
 
 
@@ -91,13 +92,18 @@ class ApplicationCommandInteractionData(_OptionGetter):
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
         ]
-        self.custom_id = kwargs.get("custom_id")
-        self.component_type = kwargs.get("component_type")
+
+
+class ComponentInteractionData:
+    def __init__(self, **kwargs):
+        self.custom_id = kwargs["custom_id"]
+        self.component_type = ComponentType(kwargs["component_type"])
 
 
 INTERACTION_TYPE_MAP = {
     InteractionType.PING: type(None),
     InteractionType.APPLICATION_COMMAND: ApplicationCommandInteractionData,
+    InteractionType.MESSAGE_COMPONENT: ComponentInteractionData,
 }
 
 

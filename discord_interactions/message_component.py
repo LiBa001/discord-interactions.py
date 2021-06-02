@@ -57,6 +57,27 @@ class Component:
     url: Optional[str] = None
     disabled: Optional[bool] = None
 
+    def to_dict(self):
+        data = {"type": self.type.value}
+
+        if self.components is not None:
+            data["components"] = [c.to_dict() for c in self.components]
+        else:
+            data["style"] = self.style.value
+            data["label"] = self.label
+
+            if self.url:
+                data["url"] = self.url
+            else:
+                data["custom_id"] = self.custom_id
+
+        if self.emoji:
+            data["emoji"] = self.emoji
+        if self.disabled is not None:
+            data["disabled"] = self.disabled
+
+        return data
+
 
 class ActionRow(Component):
     """ A non-interactive container component for other types of components. """

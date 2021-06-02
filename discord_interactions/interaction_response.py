@@ -27,6 +27,7 @@ SOFTWARE.
 from enum import Enum
 from typing import List, Protocol
 from dataclasses import dataclass
+from .message_component import Component
 
 
 class DictConvertible(Protocol):
@@ -63,6 +64,7 @@ class InteractionApplicationCommandCallbackData:
     embeds: List[DictConvertible] = None
     allowed_mentions: DictConvertible = None
     flags: List[ResponseFlags] = None
+    components: List[Component] = None
 
     @staticmethod
     def _flags_to_int(flags: List[ResponseFlags]) -> int:
@@ -81,6 +83,8 @@ class InteractionApplicationCommandCallbackData:
             data["allowed_mentions"] = self.allowed_mentions.to_dict()
         if self.flags:
             data["flags"] = self._flags_to_int(self.flags)
+        if self.components:
+            data["components"] = [c.to_dict() for c in self.components]
 
         return data
 
