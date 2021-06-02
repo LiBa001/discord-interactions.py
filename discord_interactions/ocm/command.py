@@ -39,6 +39,7 @@ from discord_interactions import (
 from typing import List, Union, Type
 from dataclasses import dataclass
 from enum import Enum
+import inspect
 
 
 class OptionChoices(Enum):
@@ -54,7 +55,21 @@ class OptionChoices(Enum):
         return choices
 
 
-class _Option:
+class OptionContainer:
+    """
+    Superclass for classes that can have attributes of type :class:`Option`,
+    i.e. :class:`Command` and :class:`Option` itself or more specific
+    :class:`SubCommand` and :class:`SubCommandGroup`.
+    """
+
+    def get_options(self):
+        return {
+            attr.name: attr
+            for _, attr in inspect.getmembers(self, lambda a: isinstance(a, Option))
+        }
+
+
+class _Option(OptionContainer):
     pass
 
 
@@ -192,7 +207,7 @@ class CommandType(OptionContainerType):
         return cls
 
 
-class Command(metaclass=CommandType):
+class Command(OptionContainer, metaclass=CommandType):
     """ Represents a Discord Slash Command in the Object-Command-Mapper (OCM). """
 
     __cmd_name__ = None

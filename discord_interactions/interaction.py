@@ -80,6 +80,13 @@ class ApplicationCommandInteractionDataOption(_OptionGetter):
     def __int__(self):
         return int(self.value)
 
+    @property
+    def is_sub_command(self):
+        return self.type in (
+            ApplicationCommandOptionType.SUB_COMMAND,
+            ApplicationCommandOptionType.SUB_COMMAND_GROUP,
+        )
+
 
 class ApplicationCommandInteractionData(_OptionGetter):
     def __init__(self, **kwargs):

@@ -9,6 +9,7 @@ from discord_interactions import (
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
     Interaction,
+    ApplicationCommandInteractionDataOption,
 )
 from flask import Flask
 import os
@@ -185,12 +186,19 @@ def hug(ctx: CommandContext, user_id):
 
 
 @interactions.command(generate_cmd)
-def generate(interaction: Interaction):
-    if sub := interaction.data.get_option("sha1"):
-        txt = sub.get_option("text").value
-        return f'"{txt}"\n=> `{hashlib.sha1(txt.encode()).hexdigest()}`', True
-    else:
-        return "error: no subcommand provided", True
+def generate(_: Interaction):
+    pass  # this function gets called before any subcommands
+
+
+@generate.subcommand()
+def sha1(_: CommandContext, sub: ApplicationCommandInteractionDataOption):
+    txt = sub.get_option("text").value
+    return f'"{txt}"\n=> `{hashlib.sha1(txt.encode()).hexdigest()}`', True
+
+
+@generate.fallback
+def generate_fallback(_: CommandContext):
+    return "error: no subcommand provided", True
 
 
 if __name__ == "__main__":
