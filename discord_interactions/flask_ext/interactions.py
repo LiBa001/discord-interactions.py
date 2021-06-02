@@ -277,12 +277,8 @@ class Interactions:
                         if self._commands[cmd_name].fallback_callback is not None:
                             resp = self._commands[cmd_name].fallback_callback(ctx)
                     else:
-                        if cmd is None:
-                            ocm_sub = ocm.Option(
-                                name=option.name, description="", type=option.type
-                            )
-                            ocm_sub.__data = option
-                        else:
+                        ocm_sub = None
+                        if cmd is not None:
                             ocm_sub = cmd.get_options()[option.name]
                         resp = self._handle_subcommand(
                             ctx, option, sub_cmd_data, ocm_sub
@@ -346,7 +342,7 @@ class Interactions:
         ctx: CommandContext,
         interaction_sub: ApplicationCommandInteractionDataOption,
         data: SubCommandData,
-        ocm_sub: ocm.Option,
+        ocm_sub: Optional[ocm.Option] = None,
     ) -> _CommandCallbackReturnType:
         """ Handle calling registered callbacks corresponding to invoked subcommands """
 
@@ -363,6 +359,9 @@ class Interactions:
                 cb_data_arg_name = cb.__code__.co_varnames[arg_count - 1]
                 cmd_type = annotations[cb_data_arg_name]
                 if issubclass(cmd_type, ocm.Option):
+                    if ocm_sub is None:
+                        ocm_sub = cmd_type(name=interaction_sub.name)
+                        ocm_sub._Option__data = interaction_sub
                     cb_data = ocm_sub
             resp = cb(ctx, cb_data)
         elif arg_count == 1:
@@ -379,7 +378,8 @@ class Interactions:
                     if data.fallback_callback is not None:
                         resp = data.fallback_callback(ctx)
                 else:
-                    ocm_sub = ocm_sub.get_options()[option.name]
+                    if ocm_sub is not None:
+                        ocm_sub = ocm_sub.get_options()[option.name]
                     resp = cls._handle_subcommand(ctx, option, sub_cmd_data, ocm_sub)
 
         return resp

@@ -115,8 +115,8 @@ def hug(cmd: Hug):
     return f"<@{cmd.author.id}> *hugs* <@{cmd.cutie}>"
 
 
-@interactions.command
-def generate(_: Generate):
+@interactions.command(Generate)
+def generate():
     pass  # this function gets called before any subcommands
 
 
