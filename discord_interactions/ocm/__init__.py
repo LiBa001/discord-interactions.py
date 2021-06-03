@@ -1,3 +1,3 @@
 #!/usr/bin/env python
 
-from .command import Command, Option, OptionChoices
+from .command import Command, SubCommand, SubCommandGroup, Option, OptionChoices

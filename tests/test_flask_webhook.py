@@ -111,6 +111,27 @@ test_data = [
             },
         },
     ),
+    (
+        {
+            "id": "44444",
+            "name": "generate",
+            "resolved": {},
+            "options": [
+                {
+                    "name": "sha1",
+                    "type": 1,
+                    "options": [{"name": "text", "type": 3, "value": "hello world"}],
+                },
+            ],
+        },
+        {
+            "type": InteractionResponseType.CHANNEL_MESSAGE.value,
+            "data": {
+                "content": '"hello world"\n=> `2aae6c35c94fcfb415dbe95f408b9ce91ee846ed`',
+                "flags": 64,
+            },
+        },
+    ),
 ]
 
 

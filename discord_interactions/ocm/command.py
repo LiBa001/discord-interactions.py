@@ -39,6 +39,7 @@ from discord_interactions import (
 from typing import List, Union, Type
 from dataclasses import dataclass
 from enum import Enum
+import inspect
 
 
 class OptionChoices(Enum):
@@ -54,7 +55,21 @@ class OptionChoices(Enum):
         return choices
 
 
-class _Option:
+class OptionContainer:
+    """
+    Superclass for classes that can have attributes of type :class:`Option`,
+    i.e. :class:`Command` and :class:`Option` itself or more specific
+    :class:`SubCommand` and :class:`SubCommandGroup`.
+    """
+
+    def get_options(self):
+        return {
+            attr.name: attr
+            for _, attr in inspect.getmembers(self, lambda a: isinstance(a, Option))
+        }
+
+
+class _Option(OptionContainer):
     pass
 
 
@@ -105,7 +120,6 @@ class Option(_Option, metaclass=OptionContainerType):
     required: bool = False
     choices: Union[Type[OptionChoices], dict] = None
     __data: ApplicationCommandInteractionDataOption = None
-    __data_loaded: bool = False
 
     @property
     def is_sub_command(self):
@@ -120,7 +134,7 @@ class Option(_Option, metaclass=OptionContainerType):
         if not self.is_sub_command:
             data = (
                 getattr(instance, "_Command__interaction").data
-                if not isinstance(self, owner)
+                if not issubclass(owner, Option)
                 else instance.__data
             )
 
@@ -134,15 +148,17 @@ class Option(_Option, metaclass=OptionContainerType):
             else:
                 return None
 
-        if not self.__data_loaded:
+        else:
             if isinstance(self, owner):
                 self.__data = instance.__data.get_option(self.name)
             else:
                 self.__data = getattr(
                     instance, "_Command__interaction"
                 ).data.get_option(self.name)
-            self.__data_loaded = True
-        return self.__data
+            return self
+
+    def __bool__(self):
+        return self.__data is not None
 
     def to_application_command_option(self) -> ApplicationCommandOption:
         options = []
@@ -191,7 +207,7 @@ class CommandType(OptionContainerType):
         return cls
 
 
-class Command(metaclass=CommandType):
+class Command(OptionContainer, metaclass=CommandType):
     """ Represents a Discord Slash Command in the Object-Command-Mapper (OCM). """
 
     __cmd_name__ = None
@@ -250,4 +266,18 @@ class Command(metaclass=CommandType):
             name=cls.__cmd_name__,
             description=cls.__cmd_description__,
             options=options or None,
+        )
+
+
+class SubCommand(Option):
+    def __init__(self, **kwargs):
+        super().__init__(
+            self.__doc__, ApplicationCommandOptionType.SUB_COMMAND, **kwargs
+        )
+
+
+class SubCommandGroup(Option):
+    def __init__(self, **kwargs):
+        super().__init__(
+            self.__doc__, ApplicationCommandOptionType.SUB_COMMAND_GROUP, **kwargs
         )

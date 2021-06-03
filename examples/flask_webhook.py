@@ -9,11 +9,13 @@ from discord_interactions import (
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
     Interaction,
+    ApplicationCommandInteractionDataOption,
 )
 from flask import Flask
 import os
 import random
 import time
+import hashlib
 
 app = Flask(__name__)
 interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
@@ -69,7 +71,7 @@ guess_cmd = ApplicationCommand(
     ],
 )
 
-hug = ApplicationCommand(
+hug_cmd = ApplicationCommand(
     "hug",
     "Hug someone nice",
     [
@@ -78,6 +80,26 @@ hug = ApplicationCommand(
             name="cutie",
             description="hug this person",
             required=True,
+        )
+    ],
+)
+
+generate_cmd = ApplicationCommand(
+    "generate",
+    "Generate different things",
+    [
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.SUB_COMMAND,
+            name="sha1",
+            description="Generate a SHA1 hash",
+            options=[
+                ApplicationCommandOption(
+                    type=ApplicationCommandOptionType.STRING,
+                    name="text",
+                    description="the text to be hashed",
+                    required=True,
+                )
+            ],
         )
     ],
 )
@@ -158,9 +180,25 @@ def after_delay(ctx: AfterCommandContext):
     ctx.client.delete_response()
 
 
-@interactions.command(hug)
+@interactions.command(hug_cmd)
 def hug(ctx: CommandContext, user_id):
     return f"<@{ctx.interaction.author.id}> *hugs* <@{user_id}>"
+
+
+@interactions.command(generate_cmd)
+def generate(_: Interaction):
+    pass  # this function gets called before any subcommands
+
+
+@generate.subcommand()
+def sha1(_: CommandContext, sub: ApplicationCommandInteractionDataOption):
+    txt = sub.get_option("text").value
+    return f'"{txt}"\n=> `{hashlib.sha1(txt.encode()).hexdigest()}`', True
+
+
+@generate.fallback
+def generate_fallback(_: CommandContext):
+    return "error: no subcommand provided", True
 
 
 if __name__ == "__main__":
