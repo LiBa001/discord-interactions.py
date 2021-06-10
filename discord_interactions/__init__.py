@@ -13,6 +13,7 @@ from .interaction_response import (
     ResponseFlags,
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
+    Response,
 )
 
 from .application_command import (
