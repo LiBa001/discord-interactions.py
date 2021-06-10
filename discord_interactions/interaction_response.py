@@ -123,14 +123,14 @@ class Response(InteractionResponse):
         ephemeral: bool = False,
         **kwargs
     ):
-        flags = kwargs.setdefault("flags", ResponseFlags.NONE)
+        kwargs.setdefault("flags", ResponseFlags.NONE)
         if ephemeral:
-            flags |= ResponseFlags.EPHEMERAL
+            kwargs["flags"] |= ResponseFlags.EPHEMERAL
 
         super().__init__(
             type=InteractionResponseType.CHANNEL_MESSAGE,
             data=InteractionApplicationCommandCallbackData(
-                content=content, embeds=[embed] if embed else [], flags=flags, **kwargs
+                content=content, embeds=[embed] if embed else [], **kwargs
             ),
         )
 
