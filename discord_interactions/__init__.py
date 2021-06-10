@@ -5,6 +5,7 @@ from .interaction import (
     InteractionType,
     ApplicationCommandInteractionData,
     ApplicationCommandInteractionDataOption,
+    ApplicationCommandInteractionDataResolved,
 )
 
 from .interaction_response import (
