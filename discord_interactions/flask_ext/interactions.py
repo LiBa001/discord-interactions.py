@@ -213,7 +213,7 @@ class Interactions:
         self._path = path
 
         app.add_url_rule(path, "interactions", self._main, methods=["POST"])
-        app.after_request_funcs["interactions"] = self._after_request
+        app.after_request_funcs.setdefault(None, []).append(self._after_request)
 
         self._commands: Dict[str, CommandData] = {}
         self._components: Dict[str, ComponentData] = {}
@@ -336,13 +336,13 @@ class Interactions:
                     r_data = None
                     if ephemeral:
                         r_data = InteractionApplicationCommandCallbackData(
-                            flags=[ResponseFlags.EPHEMERAL]
+                            flags=ResponseFlags.EPHEMERAL
                         )
                 else:
                     r_type = InteractionCallbackType.CHANNEL_MESSAGE
                     r_data = InteractionApplicationCommandCallbackData(str(resp))
                     if ephemeral:
-                        r_data.flags = [ResponseFlags.EPHEMERAL]
+                        r_data.flags = ResponseFlags.EPHEMERAL
 
                 interaction_response = InteractionResponse(
                     type=r_type,
@@ -445,8 +445,11 @@ class Interactions:
         return resp
 
     def _after_request(self, response: Response):
-        interaction = g.interaction
-        interaction_response = g.interaction_response
+        try:
+            interaction = g.interaction
+            interaction_response = g.interaction_response
+        except AttributeError:
+            return response
 
         if interaction is None:
             return response

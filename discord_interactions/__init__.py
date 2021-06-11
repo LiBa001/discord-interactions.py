@@ -5,6 +5,7 @@ from .interaction import (
     InteractionType,
     ApplicationCommandInteractionData,
     ApplicationCommandInteractionDataOption,
+    ApplicationCommandInteractionDataResolved,
 )
 
 from .interaction_response import (
@@ -13,6 +14,7 @@ from .interaction_response import (
     ResponseFlags,
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
+    Response,
 )
 
 from .application_command import (
