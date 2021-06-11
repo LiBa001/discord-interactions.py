@@ -29,7 +29,7 @@ from discord_interactions import (
     Interaction,
     InteractionType,
     InteractionResponse,
-    InteractionResponseType,
+    InteractionCallbackType,
     ResponseFlags,
     InteractionApplicationCommandCallbackData,
     ApplicationCommandInteractionDataOption,
@@ -41,7 +41,12 @@ from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
 from threading import Thread
 
-from .context import AfterCommandContext, CommandContext
+from .context import (
+    AfterCommandContext,
+    CommandContext,
+    ComponentContext,
+    AfterComponentContext,
+)
 
 
 _CommandCallbackReturnType = Union[
@@ -57,6 +62,8 @@ _CommandCallback = Union[
 ]
 _AfterCommandCallback = Callable[[AfterCommandContext], None]
 _DecoratedCommand = Union[ApplicationCommand, str, _CommandCallback, Type[ocm.Command]]
+_ComponentCallback = Callable[[ComponentContext], Union[InteractionResponse, str, None]]
+_AfterComponentCallback = Callable[[AfterComponentContext], None]
 
 
 class SubCommandData:
@@ -168,6 +175,34 @@ class CommandData(SubCommandData):
         self.application_command = cmd
 
 
+class ComponentData:
+    """
+    Stores and handles registering callbacks for a registered message component.
+
+    :type custom_id: str
+    :param custom_id: Custom id to identify the component.
+
+    :param cb:
+        The function to be called when the component is invoked
+        (e.g. button clicked).
+    """
+
+    def __init__(self, custom_id: str, cb: _ComponentCallback):
+        self.custom_id = custom_id
+        self.callback = cb
+        self.after_callback = None
+
+    def after_component(self, f: _AfterComponentCallback):
+        """
+        A decorator to register a function that gets called after a component invocation
+        has returned.
+        The function will be internally called from within Flask's `after_request`
+        function.
+        """
+
+        self.after_callback = f
+
+
 class Interactions:
     def __init__(
         self, app: Flask, public_key: str, app_id: int = None, path: str = "/"
@@ -181,6 +216,7 @@ class Interactions:
         app.after_request_funcs["interactions"] = self._after_request
 
         self._commands: Dict[str, CommandData] = {}
+        self._components: Dict[str, ComponentData] = {}
 
     @property
     def path(self) -> str:
@@ -241,7 +277,7 @@ class Interactions:
 
         if interaction.type == InteractionType.PING:
             # handle a ping
-            return jsonify(InteractionResponse(InteractionResponseType.PONG).to_dict())
+            return jsonify(InteractionResponse(InteractionCallbackType.PONG).to_dict())
         elif interaction.type == InteractionType.APPLICATION_COMMAND:
             # handle an application command (slash command)
             cmd_name = interaction.data.name
@@ -296,14 +332,14 @@ class Interactions:
                     resp, ephemeral = resp
 
                 if resp is None:
-                    r_type = InteractionResponseType.DEFERRED_CHANNEL_MESSAGE
+                    r_type = InteractionCallbackType.DEFERRED_CHANNEL_MESSAGE
                     r_data = None
                     if ephemeral:
                         r_data = InteractionApplicationCommandCallbackData(
                             flags=[ResponseFlags.EPHEMERAL]
                         )
                 else:
-                    r_type = InteractionResponseType.CHANNEL_MESSAGE
+                    r_type = InteractionCallbackType.CHANNEL_MESSAGE
                     r_data = InteractionApplicationCommandCallbackData(str(resp))
                     if ephemeral:
                         r_data.flags = [ResponseFlags.EPHEMERAL]
@@ -311,6 +347,30 @@ class Interactions:
                 interaction_response = InteractionResponse(
                     type=r_type,
                     data=r_data,
+                )
+
+            g.interaction = interaction
+            g.interaction_response = interaction_response
+
+            return jsonify(interaction_response.to_dict())
+
+        elif interaction.type == InteractionType.MESSAGE_COMPONENT:
+            # a message component has been interacted with (e.g. button clicked)
+            ctx = ComponentContext(interaction)
+            cb = self._components.get(ctx.custom_id).callback
+            resp = cb(ctx)  # call the callback
+
+            if isinstance(resp, InteractionResponse):
+                interaction_response = resp
+            elif resp is None:
+                interaction_response = InteractionResponse(
+                    InteractionCallbackType.DEFERRED_UPDATE_MESSAGE
+                )
+            else:
+                r_data = InteractionApplicationCommandCallbackData(content=resp)
+
+                interaction_response = InteractionResponse(
+                    InteractionCallbackType.UPDATE_MESSAGE, r_data
                 )
 
             g.interaction = interaction
@@ -391,15 +451,18 @@ class Interactions:
         if interaction is None:
             return response
 
-        cmd = self._commands[interaction.data.name]
-
-        if cmd.after_callback is None:
+        if interaction.type == InteractionType.APPLICATION_COMMAND:
+            target = self._commands[interaction.data.name]
+            ctx = AfterCommandContext(interaction, interaction_response)
+        elif interaction.type == InteractionType.MESSAGE_COMPONENT:
+            target = self._components[interaction.data.custom_id]
+            ctx = AfterComponentContext(interaction, interaction_response)
+        else:
             return response
 
-        ctx = AfterCommandContext(interaction, interaction_response)
-
-        t = Thread(target=cmd.after_callback, args=(ctx,))
-        t.start()
+        if target.after_callback is not None:
+            t = Thread(target=target.after_callback, args=(ctx,))
+            t.start()
 
         return response
 
@@ -460,3 +523,18 @@ class Interactions:
                 return self.register_command(f.__name__.lower().strip("_"), f)
 
         return decorator(_f) if _f is not None else decorator
+
+    def register_component(
+        self, component_id: str, callback: Callable
+    ) -> ComponentData:
+        data = ComponentData(component_id, callback)
+        self._components[component_id] = data
+        return data
+
+    def component(
+        self, component_id: str
+    ) -> Callable[[_ComponentCallback], ComponentData]:
+        def decorator(f: _ComponentCallback) -> ComponentData:
+            return self.register_component(component_id, f)
+
+        return decorator
