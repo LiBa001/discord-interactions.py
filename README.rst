@@ -165,12 +165,10 @@ messages. For this purpose you can use the ``after_command`` decorator, that reg
 a function to be called after the actual command function has returned. The function
 needs to take exactly one parameter, the ``AfterCommandContext``, which contains the
 several things, like the ``Interaction`` and initial ``InteractionResponse``.
-To be able to create followup messages, you need to provide the ID of your Discord
-application to the ``Interactions`` constructor.
 
 .. code-block:: py
 
-    interactions = Interactions(app, PUBLIC_KEY, APP_ID)
+    interactions = Interactions(app, PUBLIC_KEY)
 
     @interactions.command("delay")
     def delay(_: Interaction):
@@ -182,6 +180,19 @@ application to the ``Interactions`` constructor.
         delay_time = ctx.interaction.data.options[0].value
         time.sleep(delay_time)
         ctx.send(f"{delay_time} seconds have passed")
+
+
+Message Components
+~~~~~~~~~~~~~~~~~~
+
+You can also register callbacks for message components, such as buttons.
+Components are registered and identified by their ``custom_id``.
+
+.. code-block:: py
+
+    @interactions.component("my_button")
+    def my_button_handler(ctx: ComponentContext):
+        return f"{ctx.interaction.user.username} clicked the button"
 
 
 More Examples
