@@ -445,25 +445,32 @@ class Interactions:
         return resp
 
     def _after_request(self, response: Response):
+        print("after request handler called", flush=True)
         interaction = g.interaction
         interaction_response = g.interaction_response
 
         if interaction is None:
+            print("after request handler: interaction is none", flush=True)
             return response
 
         if interaction.type == InteractionType.APPLICATION_COMMAND:
+            print("after request handler: application command", flush=True)
             target = self._commands[interaction.data.name]
             ctx = AfterCommandContext(interaction, interaction_response)
         elif interaction.type == InteractionType.MESSAGE_COMPONENT:
+            print("after request handler: message component", flush=True)
             target = self._components[interaction.data.custom_id]
             ctx = AfterComponentContext(interaction, interaction_response)
         else:
+            print("after request handler: type unknown", flush=True)
             return response
 
         if target.after_callback is not None:
+            print("after request handler: creating thread", flush=True)
             t = Thread(target=target.after_callback, args=(ctx,))
             t.start()
 
+        print("after request handler finished", flush=True)
         return response
 
     def register_command(
