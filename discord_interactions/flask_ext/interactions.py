@@ -178,7 +178,7 @@ class Interactions:
         self._path = path
 
         app.add_url_rule(path, "interactions", self._main, methods=["POST"])
-        app.after_request_funcs["interactions"] = self._after_request
+        app.after_request_funcs[None].append(self._after_request)
 
         self._commands: Dict[str, CommandData] = {}
 
@@ -385,8 +385,11 @@ class Interactions:
         return resp
 
     def _after_request(self, response: Response):
-        interaction = g.interaction
-        interaction_response = g.interaction_response
+        try:
+            interaction = g.interaction
+            interaction_response = g.interaction_response
+        except AttributeError:
+            return response
 
         if interaction is None:
             return response
