@@ -26,14 +26,16 @@ SOFTWARE.
 
 import json
 from enum import Enum
-from .models import User, Member, Role, Channel
+from .models import User, Member, Role, Channel, Message
 from .application_command import ApplicationCommandOptionType
+from .message_component import ComponentType
 from typing import Union, Optional
 
 
 class InteractionType(Enum):
     PING = 1
     APPLICATION_COMMAND = 2
+    MESSAGE_COMPONENT = 3
 
 
 class ApplicationCommandInteractionDataResolved:
@@ -99,9 +101,16 @@ class ApplicationCommandInteractionData(_OptionGetter):
         ]
 
 
+class ComponentInteractionData:
+    def __init__(self, **kwargs):
+        self.custom_id = kwargs["custom_id"]
+        self.component_type = ComponentType(kwargs["component_type"])
+
+
 INTERACTION_TYPE_MAP = {
     InteractionType.PING: type(None),
     InteractionType.APPLICATION_COMMAND: ApplicationCommandInteractionData,
+    InteractionType.MESSAGE_COMPONENT: ComponentInteractionData,
 }
 
 
@@ -126,6 +135,7 @@ class Interaction:
         self.user = User(**kwargs["user"]) if "user" in kwargs else self.member.user
         self.token = kwargs["token"]
         self.version = int(kwargs["version"])
+        self.message = (m := kwargs.get("message")) and Message(**m)
 
     @classmethod
     def from_json(cls, data: Union[dict, str]) -> "Interaction":

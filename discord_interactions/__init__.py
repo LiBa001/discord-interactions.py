@@ -10,7 +10,7 @@ from .interaction import (
 
 from .interaction_response import (
     InteractionResponse,
-    InteractionResponseType,
+    InteractionCallbackType,
     ResponseFlags,
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
@@ -24,8 +24,27 @@ from .application_command import (
     ApplicationCommandOptionChoice,
 )
 
+from .message_component import (
+    Component,
+    ComponentType,
+    ButtonStyle,
+    ActionRow,
+    Button,
+    LinkButton,
+)
+
 from .permissions import GuildPermissions, Permissions, PermissionType
-from .models import Member, User, UserFlags, PremiumType, Role, ChannelType, Channel
+from .models import (
+    Member,
+    User,
+    UserFlag,
+    PremiumType,
+    Role,
+    ChannelType,
+    Channel,
+    MessageType,
+    Message,
+)
 from .client import ApplicationClient, InteractionClient
 from .utils import verify_key
 

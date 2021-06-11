@@ -70,3 +70,17 @@ class AfterCommandContext(CommandContext):
         followup_msg = FollowupMessage(content=msg, tts=tts)
 
         self.client.create_message(followup_msg)
+
+
+class ComponentContext(CommandContext):
+    @property
+    def message(self):
+        return self._interaction.message
+
+    @property
+    def custom_id(self):
+        return self._interaction.data.custom_id
+
+
+class AfterComponentContext(AfterCommandContext, ComponentContext):
+    pass

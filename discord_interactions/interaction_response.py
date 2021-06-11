@@ -27,6 +27,7 @@ SOFTWARE.
 from enum import Enum, Flag
 from typing import List, Protocol, Optional
 from dataclasses import dataclass
+from .message_component import Component
 
 
 class DictConvertible(Protocol):
@@ -40,10 +41,12 @@ class DictConvertible(Protocol):
         ...
 
 
-class InteractionResponseType(Enum):
+class InteractionCallbackType(Enum):
     PONG = 1
     CHANNEL_MESSAGE = 4
     DEFERRED_CHANNEL_MESSAGE = 5
+    DEFERRED_UPDATE_MESSAGE = 6
+    UPDATE_MESSAGE = 7
 
 
 class ResponseFlags(Flag):
@@ -62,6 +65,7 @@ class InteractionApplicationCommandCallbackData:
     embeds: List[DictConvertible] = None
     allowed_mentions: DictConvertible = None
     flags: ResponseFlags = ResponseFlags.NONE
+    components: List[Component] = None
 
     def to_dict(self) -> dict:
         data = {}
@@ -76,6 +80,8 @@ class InteractionApplicationCommandCallbackData:
             data["allowed_mentions"] = self.allowed_mentions.to_dict()
         if self.flags:
             data["flags"] = self.flags.value
+        if self.components:
+            data["components"] = [c.to_dict() for c in self.components]
 
         return data
 
@@ -86,7 +92,7 @@ class InteractionResponse:
     Represents a basic response to a received :class:`Interaction`.
     """
 
-    type: InteractionResponseType
+    type: InteractionCallbackType
     data: InteractionApplicationCommandCallbackData = None
 
     def to_dict(self) -> dict:
