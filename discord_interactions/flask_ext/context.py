@@ -80,3 +80,7 @@ class ComponentContext(CommandContext):
     @property
     def custom_id(self):
         return self._interaction.data.custom_id
+
+
+class AfterComponentContext(AfterCommandContext, ComponentContext):
+    pass

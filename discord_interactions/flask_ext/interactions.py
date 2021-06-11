@@ -41,7 +41,12 @@ from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
 from threading import Thread
 
-from .context import AfterCommandContext, CommandContext, ComponentContext
+from .context import (
+    AfterCommandContext,
+    CommandContext,
+    ComponentContext,
+    AfterComponentContext,
+)
 
 
 _CommandCallbackReturnType = Union[
@@ -57,6 +62,8 @@ _CommandCallback = Union[
 ]
 _AfterCommandCallback = Callable[[AfterCommandContext], None]
 _DecoratedCommand = Union[ApplicationCommand, str, _CommandCallback, Type[ocm.Command]]
+_ComponentCallback = Callable[[ComponentContext], Union[InteractionResponse, str, None]]
+_AfterComponentCallback = Callable[[AfterComponentContext], None]
 
 
 class SubCommandData:
@@ -168,6 +175,34 @@ class CommandData(SubCommandData):
         self.application_command = cmd
 
 
+class ComponentData:
+    """
+    Stores and handles registering callbacks for a registered message component.
+
+    :type custom_id: str
+    :param custom_id: Custom id to identify the component.
+
+    :param cb:
+        The function to be called when the component is invoked
+        (e.g. button clicked).
+    """
+
+    def __init__(self, custom_id: str, cb: _ComponentCallback):
+        self.custom_id = custom_id
+        self.callback = cb
+        self.after_callback = None
+
+    def after_component(self, f: _AfterComponentCallback):
+        """
+        A decorator to register a function that gets called after a component invocation
+        has returned.
+        The function will be internally called from within Flask's `after_request`
+        function.
+        """
+
+        self.after_callback = f
+
+
 class Interactions:
     def __init__(
         self, app: Flask, public_key: str, app_id: int = None, path: str = "/"
@@ -181,7 +216,7 @@ class Interactions:
         app.after_request_funcs["interactions"] = self._after_request
 
         self._commands: Dict[str, CommandData] = {}
-        self._components: Dict[str, Callable] = {}
+        self._components: Dict[str, ComponentData] = {}
 
     @property
     def path(self) -> str:
@@ -322,7 +357,7 @@ class Interactions:
         elif interaction.type == InteractionType.MESSAGE_COMPONENT:
             # a message component has been interacted with (e.g. button clicked)
             ctx = ComponentContext(interaction)
-            cb = self._components.get(ctx.custom_id)
+            cb = self._components.get(ctx.custom_id).callback
             resp = cb(ctx)  # call the callback
 
             if isinstance(resp, InteractionResponse):
@@ -486,11 +521,17 @@ class Interactions:
 
         return decorator(_f) if _f is not None else decorator
 
-    def register_component(self, component_id: str, callback: Callable):
-        self._components[component_id] = callback
+    def register_component(
+        self, component_id: str, callback: Callable
+    ) -> ComponentData:
+        data = ComponentData(component_id, callback)
+        self._components[component_id] = data
+        return data
 
-    def component(self, component_id: str):
-        def decorator(f: Callable):
-            self.register_component(component_id, f)
+    def component(
+        self, component_id: str
+    ) -> Callable[[_ComponentCallback], ComponentData]:
+        def decorator(f: _ComponentCallback) -> ComponentData:
+            return self.register_component(component_id, f)
 
         return decorator
