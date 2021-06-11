@@ -123,7 +123,7 @@ class Interaction:
         self.guild_id = int(kwargs.get("guild_id", 0)) or None
         self.channel_id = int(kwargs.get("channel_id", 0)) or None
         self.member = Member(**kwargs["member"]) if "member" in kwargs else None
-        self.user = User(**kwargs["user"]) if "user" in kwargs else None
+        self.user = User(**kwargs["user"]) if "user" in kwargs else self.member.user
         self.token = kwargs["token"]
         self.version = int(kwargs["version"])
 
@@ -146,6 +146,10 @@ class Interaction:
     @property
     def author(self) -> Union[Member, User]:
         return self.member or self.user
+
+    @property
+    def is_dm(self) -> bool:
+        return self.member is None
 
     def get_user(self, user_id: int) -> Optional[User]:
         return self.data.resolved.users.get(user_id)

@@ -25,7 +25,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from enum import Enum
 
@@ -73,6 +73,16 @@ class User:
             self.premium_type = PremiumType(premium_type)
 
         self.public_flags = self._parse_flags(int(data.get("public_flags", 0)))
+
+    def __int__(self) -> int:
+        return self.id
+
+    def __str__(self) -> str:
+        return f"{self.username}#{self.discriminator}"
+
+    @property
+    def mention(self) -> str:
+        return f"<@{self.id}>"
 
     @staticmethod
     def _parse_flags(flags: int) -> List[UserFlags]:
@@ -131,9 +141,20 @@ class Member:
         self.mute = data.get("mute")
         self.pending = data.get("pending", False)
 
+    def __str__(self) -> str:
+        return self.display_name or ""
+
     @property
-    def id(self):
+    def id(self) -> Optional[int]:
         return self.user.id if self.user else None
+
+    @property
+    def username(self) -> Optional[str]:
+        return self.user.username if self.user else None
+
+    @property
+    def display_name(self) -> Optional[str]:
+        return self.nick or self.username
 
     def to_dict(self) -> dict:
         data = {
