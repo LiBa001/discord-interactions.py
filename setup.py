@@ -5,7 +5,7 @@ with open("README.rst", "r", encoding="utf-8") as f:
 
 setup(
     name="discord-interactions.py",
-    version="0.0.7",
+    version="0.0.8",
     description="A library around the Discord Interactions API",
     long_description=readme,
     long_description_content_type="text/x-rst",

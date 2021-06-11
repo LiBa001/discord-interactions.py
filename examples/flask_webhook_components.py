@@ -9,9 +9,7 @@ from discord_interactions import (
     Button,
     ButtonStyle,
     ActionRow,
-    InteractionResponse,
-    InteractionCallbackType,
-    InteractionApplicationCommandCallbackData,
+    Response,
 )
 
 app = Flask(__name__)
@@ -22,12 +20,7 @@ interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
 def hello_components():
     btn = Button("my_button", style=ButtonStyle.PRIMARY, label="Click me!")
 
-    return InteractionResponse(
-        InteractionCallbackType.CHANNEL_MESSAGE,
-        data=InteractionApplicationCommandCallbackData(
-            content="This is a button.", components=[ActionRow(components=[btn])]
-        ),
-    )
+    return Response("This is a button.", components=[ActionRow(components=[btn])])
 
 
 @interactions.component("my_button")
