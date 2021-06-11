@@ -24,8 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from enum import Enum
-from typing import List, Protocol
+from enum import Enum, Flag
+from typing import List, Protocol, Optional
 from dataclasses import dataclass
 from .message_component import Component
 
@@ -49,7 +49,8 @@ class InteractionCallbackType(Enum):
     UPDATE_MESSAGE = 7
 
 
-class ResponseFlags(Enum):
+class ResponseFlags(Flag):
+    NONE = 0
     EPHEMERAL = 64
 
 
@@ -63,12 +64,8 @@ class InteractionApplicationCommandCallbackData:
     tts: bool = False
     embeds: List[DictConvertible] = None
     allowed_mentions: DictConvertible = None
-    flags: List[ResponseFlags] = None
+    flags: ResponseFlags = ResponseFlags.NONE
     components: List[Component] = None
-
-    @staticmethod
-    def _flags_to_int(flags: List[ResponseFlags]) -> int:
-        return sum(map(lambda flag: flag.value, flags))
 
     def to_dict(self) -> dict:
         data = {}
@@ -82,7 +79,7 @@ class InteractionApplicationCommandCallbackData:
         if self.allowed_mentions:
             data["allowed_mentions"] = self.allowed_mentions.to_dict()
         if self.flags:
-            data["flags"] = self._flags_to_int(self.flags)
+            data["flags"] = self.flags.value
         if self.components:
             data["components"] = [c.to_dict() for c in self.components]
 
@@ -105,6 +102,43 @@ class InteractionResponse:
             response["data"] = self.data.to_dict()
 
         return response
+
+
+class Response(InteractionResponse):
+    """
+    An utility class to create simplified interaction responses to application commands.
+    Useful for responding with an embed.
+
+    Creates an :class:`InteractionResponse` of type
+    `InteractionResponseType.CHANNEL_MESSAGE` internally.
+
+    :type content: Optional[str]
+    :param content: The response message content
+
+    :type embed: Optional[:class:`DictConvertible`] (e.g. discord.py's `discord.Embed`)
+    :param embed: The response message embed
+
+    :type ephemeral: bool
+    :param ephemeral: Whether or not the response should be ephemeral (default: `False`)
+    """
+
+    def __init__(
+        self,
+        content: Optional[str] = None,
+        embed: Optional[DictConvertible] = None,
+        ephemeral: bool = False,
+        **kwargs
+    ):
+        kwargs.setdefault("flags", ResponseFlags.NONE)
+        if ephemeral:
+            kwargs["flags"] |= ResponseFlags.EPHEMERAL
+
+        super().__init__(
+            type=InteractionCallbackType.CHANNEL_MESSAGE,
+            data=InteractionApplicationCommandCallbackData(
+                content=content, embeds=[embed] if embed else [], **kwargs
+            ),
+        )
 
 
 @dataclass()

@@ -31,12 +31,13 @@ from discord_interactions import (
     Channel,
     Role,
     ApplicationCommandInteractionDataOption,
+    ApplicationCommandInteractionDataResolved,
     ApplicationCommand,
     ApplicationCommandOption,
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
 )
-from typing import List, Union, Type
+from typing import List, Union, Type, Any
 from dataclasses import dataclass
 from enum import Enum
 import inspect
@@ -108,6 +109,8 @@ class OptionContainerType(type):
                             if _type == int:
                                 attr.type = ApplicationCommandOptionType.INTEGER
 
+                        attr.__type = _type
+
         return cls
 
 
@@ -120,6 +123,8 @@ class Option(_Option, metaclass=OptionContainerType):
     required: bool = False
     choices: Union[Type[OptionChoices], dict] = None
     __data: ApplicationCommandInteractionDataOption = None
+    __resolved: ApplicationCommandInteractionDataResolved = None
+    __type: Any = None
 
     @property
     def is_sub_command(self):
@@ -143,6 +148,9 @@ class Option(_Option, metaclass=OptionContainerType):
                 choices = self.choices
                 if isinstance(choices, type) and issubclass(choices, OptionChoices):
                     return choices(value)
+                elif self.__type in (User, Channel, Role):
+                    resolved = self.__resolved or data.resolved
+                    return getattr(resolved, f"{self.__type.__name__.lower()}s")[value]
                 else:
                     return value
             else:
@@ -152,9 +160,9 @@ class Option(_Option, metaclass=OptionContainerType):
             if isinstance(self, owner):
                 self.__data = instance.__data.get_option(self.name)
             else:
-                self.__data = getattr(
-                    instance, "_Command__interaction"
-                ).data.get_option(self.name)
+                interaction_data = getattr(instance, "_Command__interaction").data
+                self.__data = interaction_data.get_option(self.name)
+                self.__resolved = interaction_data.resolved
             return self
 
     def __bool__(self):

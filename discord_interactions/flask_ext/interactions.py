@@ -336,13 +336,13 @@ class Interactions:
                     r_data = None
                     if ephemeral:
                         r_data = InteractionApplicationCommandCallbackData(
-                            flags=[ResponseFlags.EPHEMERAL]
+                            flags=ResponseFlags.EPHEMERAL
                         )
                 else:
                     r_type = InteractionCallbackType.CHANNEL_MESSAGE
                     r_data = InteractionApplicationCommandCallbackData(str(resp))
                     if ephemeral:
-                        r_data.flags = [ResponseFlags.EPHEMERAL]
+                        r_data.flags = ResponseFlags.EPHEMERAL
 
                 interaction_response = InteractionResponse(
                     type=r_type,
