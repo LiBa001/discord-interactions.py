@@ -134,7 +134,7 @@ class Response(InteractionResponse):
             kwargs["flags"] |= ResponseFlags.EPHEMERAL
 
         super().__init__(
-            type=InteractionResponseType.CHANNEL_MESSAGE,
+            type=InteractionCallbackType.CHANNEL_MESSAGE,
             data=InteractionApplicationCommandCallbackData(
                 content=content, embeds=[embed] if embed else [], **kwargs
             ),
