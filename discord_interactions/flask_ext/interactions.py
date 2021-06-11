@@ -451,15 +451,18 @@ class Interactions:
         if interaction is None:
             return response
 
-        cmd = self._commands[interaction.data.name]
-
-        if cmd.after_callback is None:
+        if interaction.type == InteractionType.APPLICATION_COMMAND:
+            target = self._commands[interaction.data.name]
+            ctx = AfterCommandContext(interaction, interaction_response)
+        elif interaction.type == InteractionType.MESSAGE_COMPONENT:
+            target = self._components[interaction.data.custom_id]
+            ctx = AfterComponentContext(interaction, interaction_response)
+        else:
             return response
 
-        ctx = AfterCommandContext(interaction, interaction_response)
-
-        t = Thread(target=cmd.after_callback, args=(ctx,))
-        t.start()
+        if target.after_callback is not None:
+            t = Thread(target=target.after_callback, args=(ctx,))
+            t.start()
 
         return response
 
