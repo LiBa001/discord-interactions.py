@@ -201,5 +201,18 @@ def generate_fallback(_: CommandContext):
     return "error: no subcommand provided", True
 
 
+@interactions.command("errorexample")
+def error_example():
+    int("this causes a ValueError to be raised")
+
+
+@error_example.on_error
+def _on_error_example_error(e: Exception):
+    if isinstance(e, ValueError):
+        return "integer conversion failed"
+    else:
+        return "unknown error"
+
+
 if __name__ == "__main__":
     app.run("0.0.0.0", 80)

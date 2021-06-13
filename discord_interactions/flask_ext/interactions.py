@@ -40,6 +40,7 @@ from discord_interactions import (
 from discord_interactions import ocm
 from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
 from threading import Thread
+import logging
 
 from .context import (
     AfterCommandContext,
@@ -47,6 +48,9 @@ from .context import (
     ComponentContext,
     AfterComponentContext,
 )
+
+
+logger = logging.getLogger("discord_interactions")
 
 
 _CommandCallbackReturnType = Union[
@@ -84,6 +88,7 @@ class SubCommandData:
         self.callback = cb
         self.after_callback = None
         self.fallback_callback = None
+        self.error_callback = None
         self._subcommands: Dict[str, SubCommandData] = {}
 
     @property
@@ -156,6 +161,18 @@ class SubCommandData:
 
         self.fallback_callback = f
 
+    def on_error(self, f: Callable[[Exception], _CommandCallbackReturnType]):
+        """
+        A decorator to set the command-level error callback function.
+        The provided function will be called when an exception is raised in any other
+        callback of this command
+        (or subcommands if not handled by their own error handler).
+
+        :param f: The error callback function.
+        """
+
+        self.error_callback = f
+
 
 class CommandData(SubCommandData):
     """
@@ -191,6 +208,7 @@ class ComponentData:
         self.custom_id = custom_id
         self.callback = cb
         self.after_callback = None
+        self.error_callback = None
 
     def after_component(self, f: _AfterComponentCallback):
         """
@@ -201,6 +219,17 @@ class ComponentData:
         """
 
         self.after_callback = f
+
+    def on_error(self, f: Callable[[Exception], _CommandCallbackReturnType]):
+        """
+        A decorator to set the component error callback function.
+        The provided function will be called when an exception is raised in any other
+        callback of this component.
+
+        :param f: The error callback function.
+        """
+
+        self.error_callback = f
 
 
 class Interactions:
@@ -217,6 +246,8 @@ class Interactions:
 
         self._commands: Dict[str, CommandData] = {}
         self._components: Dict[str, ComponentData] = {}
+
+        self._error_callback = None
 
     @property
     def path(self) -> str:
@@ -270,6 +301,7 @@ class Interactions:
         # Verify request
         if not self._app.config["TESTING"]:
             if not self._verify_request():
+                logger.debug("invalid request signature")
                 return "Bad request signature", 401
 
         # Handle interactions
@@ -277,18 +309,21 @@ class Interactions:
 
         if interaction.type == InteractionType.PING:
             # handle a ping
+            logger.debug("incoming ping interaction")
             return jsonify(InteractionResponse(InteractionCallbackType.PONG).to_dict())
         elif interaction.type == InteractionType.APPLICATION_COMMAND:
             # handle an application command (slash command)
+            logger.debug("incoming application command interaction")
             cmd_name = interaction.data.name
-            cb = self._commands[cmd_name].callback
+            cmd_data = self._commands[cmd_name]
+            cb = cmd_data.callback
             ctx = CommandContext(interaction)
             cmd: Optional[ocm.Command] = None
 
             if cb.__code__.co_argcount > 1:
                 # the cb takes more than one argument; pass them
                 args, kwargs = self._get_cb_args_kwargs(cb, interaction.data.options)
-                resp = cb(ctx, *args, **kwargs)
+                args = (ctx, *args)
             elif cb.__code__.co_argcount == 1:
                 # callback takes only one argument; figure out it's type
                 cb_data = interaction
@@ -299,26 +334,44 @@ class Interactions:
                     elif issubclass(cmd_type, CommandContext):
                         cb_data = ctx = cmd_type(interaction)
 
-                resp = cb(cb_data)
+                args, kwargs = (cb_data,), {}
             else:
-                resp = cb()
+                args, kwargs = (), {}
+
+            try:
+                resp = cb(*args, **kwargs)
+            except Exception as e:
+                if cmd_data.error_callback:
+                    resp = cmd_data.error_callback(e)
+                elif self._error_callback:
+                    resp = self._error_callback(e)
+                else:
+                    raise e
 
             # figure out whether to call subcommands
             if resp is None and len(interaction.data.options) == 1:
                 option = interaction.data.options[0]
                 if option.is_sub_command:
-                    sub_cmd_data = self._commands[cmd_name].subcommands.get(option.name)
+                    sub_cmd_data = cmd_data.subcommands.get(option.name)
                     if sub_cmd_data is None:
                         # no callback registered for subcommand; try fallback
-                        if self._commands[cmd_name].fallback_callback is not None:
-                            resp = self._commands[cmd_name].fallback_callback(ctx)
+                        if cmd_data.fallback_callback is not None:
+                            resp = cmd_data.fallback_callback(ctx)
                     else:
                         ocm_sub = None
                         if cmd is not None:
                             ocm_sub = cmd.get_options()[option.name]
-                        resp = self._handle_subcommand(
-                            ctx, option, sub_cmd_data, ocm_sub
-                        )
+                        try:
+                            resp = self._handle_subcommand(
+                                ctx, option, sub_cmd_data, ocm_sub
+                            )
+                        except Exception as e:
+                            if cmd_data.error_callback:
+                                resp = cmd_data.error_callback(e)
+                            elif self._error_callback:
+                                resp = self._error_callback(e)
+                            else:
+                                raise e
 
             # build the actual interaction response
             if isinstance(resp, InteractionResponse):
@@ -356,9 +409,22 @@ class Interactions:
 
         elif interaction.type == InteractionType.MESSAGE_COMPONENT:
             # a message component has been interacted with (e.g. button clicked)
+            logger.debug("incoming message component interaction")
             ctx = ComponentContext(interaction)
-            cb = self._components.get(ctx.custom_id).callback
-            resp = cb(ctx)  # call the callback
+            component_data = self._components.get(ctx.custom_id)
+
+            if component_data is None:
+                return  # TODO: implement fallback mechanism
+
+            try:
+                resp = component_data.callback(ctx)  # call the callback
+            except Exception as e:
+                if component_data.error_callback:
+                    resp = component_data.error_callback(e)
+                elif self._error_callback:
+                    resp = self._error_callback(e)
+                else:
+                    raise e
 
             if isinstance(resp, InteractionResponse):
                 interaction_response = resp
@@ -409,9 +475,11 @@ class Interactions:
         cb = data.callback
         arg_count = cb.__code__.co_argcount
 
-        if arg_count > 2:
+        logger.debug(f"handling subcommand {data.name}")
+
+        if arg_count > 2:  # TODO: fix this mess
             args, kwargs = cls._get_cb_args_kwargs(cb, interaction_sub.options)
-            resp = cb(ctx, *args, **kwargs)
+            args = (ctx, *args)
         elif arg_count == 2:
             # callback takes only one argument; figure out it's type
             cb_data = interaction_sub
@@ -423,11 +491,19 @@ class Interactions:
                         ocm_sub = cmd_type(name=interaction_sub.name)
                         ocm_sub._Option__data = interaction_sub
                     cb_data = ocm_sub
-            resp = cb(ctx, cb_data)
+            args, kwargs = (ctx, cb_data), {}
         elif arg_count == 1:
-            resp = cb(ctx)
+            args, kwargs = (ctx,), {}
         else:
-            resp = cb()
+            args, kwargs = (), {}
+
+        try:
+            resp = cb(*args, **kwargs)
+        except Exception as e:
+            if data.error_callback:
+                resp = data.error_callback(e)
+            else:
+                raise e
 
         if resp is None and len(interaction_sub.options) == 1:
             option = interaction_sub.options[0]
@@ -436,11 +512,27 @@ class Interactions:
                 if sub_cmd_data is None:
                     # try to call fallback if subcommand callback is not registered
                     if data.fallback_callback is not None:
-                        resp = data.fallback_callback(ctx)
+                        try:
+                            resp = data.fallback_callback(ctx)
+                        except Exception as e:
+                            if data.error_callback:
+                                resp = data.error_callback(e)
+                            else:
+                                raise e
                 else:
                     if ocm_sub is not None:
                         ocm_sub = ocm_sub.get_options()[option.name]
-                    resp = cls._handle_subcommand(ctx, option, sub_cmd_data, ocm_sub)
+                    try:
+                        resp = cls._handle_subcommand(
+                            ctx, option, sub_cmd_data, ocm_sub
+                        )
+                    except Exception as e:
+                        if sub_cmd_data.error_callback:
+                            resp = sub_cmd_data.error_callback(e)
+                        elif data.error_callback:
+                            resp = data.error_callback(e)
+                        else:
+                            raise e
 
         return resp
 
@@ -530,6 +622,14 @@ class Interactions:
     def register_component(
         self, component_id: str, callback: Callable
     ) -> ComponentData:
+        """
+        Register a callback function for a Discord Message Component.
+
+        :param component_id: The ``custom_id`` specified when creating the component
+        :param callback: The function that is called when the component is triggered
+        :return: An object containing all the component data (e.g. custom_id, callbacks)
+        """
+
         data = ComponentData(component_id, callback)
         self._components[component_id] = data
         return data
@@ -537,7 +637,25 @@ class Interactions:
     def component(
         self, component_id: str
     ) -> Callable[[_ComponentCallback], ComponentData]:
+        """
+        A decorator to register a message component.
+        Calls :meth:`register_component` internally.
+
+        :param component_id: The custom id specified when creating the component.
+        """
+
         def decorator(f: _ComponentCallback) -> ComponentData:
             return self.register_component(component_id, f)
 
         return decorator
+
+    def on_error(self, f: Callable[[Exception], _CommandCallbackReturnType]):
+        """
+        A decorator to set the top-level error callback function.
+        The provided function will be called when an exception is raised in any other
+        user defined callback that is not already handled by another error handler.
+
+        :param f: The error callback function.
+        """
+
+        self._error_callback = f
