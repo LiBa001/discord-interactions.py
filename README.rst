@@ -68,7 +68,7 @@ The most API-like example with the flask extension is this:
         ApplicationCommandOptionType,
         Interaction,
         InteractionResponse,
-        InteractionResponseType,
+        InteractionCallbackType,
         InteractionApplicationCommandCallbackData,
     )
     from flask import Flask
@@ -93,7 +93,7 @@ The most API-like example with the flask extension is this:
         msg = interaction.data.options[0].value  # "message" option content
 
         return InteractionResponse(
-            type=InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            type=InteractionCallbackType.CHANNEL_MESSAGE_WITH_SOURCE,
             data=InteractionApplicationCommandCallbackData(content=msg),
         )
 
@@ -116,10 +116,10 @@ Let's make it a bit simpler:
 
 Now, we don't need to deal with ``InteractionResponse`` anymore, but instead just
 return the response content as a string. The response type then defaults to
-``InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE``. You could also just return
+``InteractionCallbackType.CHANNEL_MESSAGE``. You could also just return
 None, if you don't want to send a response. You can also simply return a boolean as a
-second value, indicating whether or not the command call should be displayed in Discord
-(i.e. the ``_WITH_SOURCE`` part of the response type).
+second value, indicating whether or not the response should be ephemeral
+(i.e. only visible to the invoking user).
 Also we get the option via the ``get_option`` helper method.
 
 
