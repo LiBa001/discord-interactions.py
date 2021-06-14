@@ -56,7 +56,7 @@ class _OptionGetter:
     def get_option(
         self, option_name: str
     ) -> Union["ApplicationCommandInteractionDataOption", None]:
-        """ Get option by name. """
+        """Get option by name."""
 
         for option in self.options:
             if option.name == option_name:

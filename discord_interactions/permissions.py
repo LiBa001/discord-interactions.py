@@ -35,7 +35,7 @@ class PermissionType(Enum):
 
 @dataclass()
 class Permissions:
-    """ Allow to enable or disable commands for specific users or roles in a guild. """
+    """Allow to enable or disable commands for specific users or roles in a guild."""
 
     id: int  # id of the role or user
     type: PermissionType
@@ -51,7 +51,7 @@ class Permissions:
 
 @dataclass()
 class GuildPermissions:
-    """ Returned when fetching the permissions for a command in a guild. """
+    """Returned when fetching the permissions for a command in a guild."""
 
     id: int  # id of the command
     application_id: int

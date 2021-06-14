@@ -138,7 +138,7 @@ test_data = [
 @pytest.mark.parametrize("app", test_apps)
 @pytest.mark.parametrize("data", test_data)
 def test_commands(app: Flask, data: Tuple[dict, dict]):
-    """ Test the echo command. """
+    """Test the echo command."""
 
     app.config["TESTING"] = True
 

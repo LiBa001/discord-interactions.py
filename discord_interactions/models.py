@@ -347,10 +347,9 @@ class Message:
         self.member = Member(**data["member"]) if "member" in data else None
         self.content = data["content"]
         self.timestamp = datetime.fromisoformat(data["timestamp"])
-        # fmt: off
         self.edited_timestamp = (
-                (t := data["edited_timestamp"]) and datetime.fromisoformat(t)
-        )
+            t := data["edited_timestamp"]
+        ) and datetime.fromisoformat(t)
         self.tts = data["tts"]
         self.mention_everyone = data["mention_everyone"]
         self.mentions = [User(**u) for u in data["mentions"]]

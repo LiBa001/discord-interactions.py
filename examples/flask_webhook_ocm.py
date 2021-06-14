@@ -11,11 +11,11 @@ interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
 
 
 class Ping(Command):
-    """ simple ping command """
+    """simple ping command"""
 
 
 class Echo(Command):
-    """ what goes around comes around """
+    """what goes around comes around"""
 
     message: str = Option("This will be echoed.", required=True)
 
@@ -27,13 +27,13 @@ class RPSSymbol(OptionChoices):
 
 
 class RPS(Command):
-    """ Play Rock, Paper, Scissors! """
+    """Play Rock, Paper, Scissors!"""
 
     symbol: RPSSymbol = Option("rock, paper or scissors", required=True)
 
 
 class Guess(Command):
-    """ Guess my number! """
+    """Guess my number!"""
 
     number: int = Option("what do you guess?", required=True)
     min_num: int = Option("smallest possible number (default: 0)")
@@ -41,19 +41,19 @@ class Guess(Command):
 
 
 class Hug(Command):
-    """ Hug someone nice """
+    """Hug someone nice"""
 
     cutie: User = Option("hug this person", required=True)
 
 
 class Sha1(SubCommand):
-    """ Generate a SHA1 hash """
+    """Generate a SHA1 hash"""
 
     text: str = Option("the text to be hashed", required=True)
 
 
 class Generate(Command):
-    """ Generate different things """
+    """Generate different things"""
 
     sha1 = Sha1()
 

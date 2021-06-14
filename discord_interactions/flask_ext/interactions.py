@@ -255,7 +255,7 @@ class Interactions:
 
     @property
     def commands(self) -> List[ApplicationCommand]:
-        """ All registered application commands """
+        """All registered application commands"""
 
         return [
             cmd.application_command
@@ -416,6 +416,7 @@ class Interactions:
             if component_data is None:
                 return  # TODO: implement fallback mechanism
 
+            # TODO: implement custom_id arg parsing & support zero arg callbacks
             try:
                 resp = component_data.callback(ctx)  # call the callback
             except Exception as e:
@@ -451,7 +452,9 @@ class Interactions:
     def _get_cb_args_kwargs(
         cb, options: List[ApplicationCommandInteractionDataOption]
     ) -> Tuple[list, dict]:
+        # count difference between command options and callback args (without ctx)
         arg_diff = cb.__code__.co_argcount - (len(options) + 1)
+        # number of callback keyword args
         num_kwargs = len(cb.__defaults__ or ())
         if 1 < num_kwargs > arg_diff > 0:
             # if not all arguments can be passed by position
@@ -460,6 +463,7 @@ class Interactions:
         else:
             cb_args = options
             cb_kwargs = []
+        # TODO: implement arg conversion based on annotations
         return [o.value for o in cb_args], {o.name: o.value for o in cb_kwargs}
 
     @classmethod
@@ -470,32 +474,50 @@ class Interactions:
         data: SubCommandData,
         ocm_sub: Optional[ocm.Option] = None,
     ) -> _CommandCallbackReturnType:
-        """ Handle calling registered callbacks corresponding to invoked subcommands """
+        """Handle calling registered callbacks corresponding to invoked subcommands"""
 
         cb = data.callback
         arg_count = cb.__code__.co_argcount
 
         logger.debug(f"handling subcommand {data.name}")
 
-        if arg_count > 2:  # TODO: fix this mess
+        cb_data = None
+        pass_option_as_arg = False
+        if len(annotations := cb.__annotations__) > 0 and arg_count <= 2:
+            cb_data_arg_name = cb.__code__.co_varnames[arg_count - 1]
+            cmd_type = annotations.get(cb_data_arg_name)
+            if issubclass(cmd_type, ocm.Option):
+                if ocm_sub is None:
+                    ocm_sub = cmd_type(name=interaction_sub.name)
+                    ocm_sub._Option__data = interaction_sub
+                cb_data = ocm_sub
+            elif issubclass(cmd_type, CommandContext):
+                cb_data = ctx
+            elif issubclass(cmd_type, ApplicationCommandInteractionDataOption):
+                cb_data = cmd_type(
+                    name=interaction_sub.name,
+                    type=interaction_sub.type,
+                    value=interaction_sub.value,
+                )
+                cb_data.options = interaction_sub.options
+            elif cmd_type is not None and arg_count == 2:
+                # pass cmd option as individual argument when it has an annotation;
+                # else it will default to 'ApplicationCommandInteractionDataOption'
+                pass_option_as_arg = True
+        elif arg_count == 2:
+            cb_data = interaction_sub
+
+        kwargs = {}
+        if arg_count == 0:
+            args = ()
+        elif arg_count == 1:
+            # for one arg pass ctx by default, only something else if annotated
+            args = cb_data or ctx
+        elif pass_option_as_arg or arg_count > 2:
             args, kwargs = cls._get_cb_args_kwargs(cb, interaction_sub.options)
             args = (ctx, *args)
-        elif arg_count == 2:
-            # callback takes only one argument; figure out it's type
-            cb_data = interaction_sub
-            if len(annotations := cb.__annotations__) > 0:
-                cb_data_arg_name = cb.__code__.co_varnames[arg_count - 1]
-                cmd_type = annotations[cb_data_arg_name]
-                if issubclass(cmd_type, ocm.Option):
-                    if ocm_sub is None:
-                        ocm_sub = cmd_type(name=interaction_sub.name)
-                        ocm_sub._Option__data = interaction_sub
-                    cb_data = ocm_sub
-            args, kwargs = (ctx, cb_data), {}
-        elif arg_count == 1:
-            args, kwargs = (ctx,), {}
         else:
-            args, kwargs = (), {}
+            args = (ctx, cb_data)
 
         try:
             resp = cb(*args, **kwargs)

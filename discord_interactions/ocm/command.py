@@ -134,7 +134,7 @@ class Option(_Option, metaclass=OptionContainerType):
         )
 
     def __get__(self, instance: Union["Command", "Option"], owner):
-        """ Return what data this option actually received. """
+        """Return what data this option actually received."""
 
         if not self.is_sub_command:
             data = (
@@ -216,7 +216,7 @@ class CommandType(OptionContainerType):
 
 
 class Command(OptionContainer, metaclass=CommandType):
-    """ Represents a Discord Slash Command in the Object-Command-Mapper (OCM). """
+    """Represents a Discord Slash Command in the Object-Command-Mapper (OCM)."""
 
     __cmd_name__ = None
     __cmd_description__ = None

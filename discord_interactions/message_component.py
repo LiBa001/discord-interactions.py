@@ -44,7 +44,7 @@ class ButtonStyle(Enum):
 
 @dataclass()
 class Component:
-    """ Interactive component on a message object. """
+    """Interactive component on a message object."""
 
     type: ComponentType
 
@@ -84,14 +84,14 @@ class Component:
 
 
 class ActionRow(Component):
-    """ A non-interactive container component for other types of components. """
+    """A non-interactive container component for other types of components."""
 
     def __init__(self, components: List[Component]):
         super().__init__(type=ComponentType.ActionRow, components=components)
 
 
 class Button(Component):
-    """ A non-link button component. """
+    """A non-link button component."""
 
     def __init__(
         self,
@@ -112,7 +112,7 @@ class Button(Component):
 
 
 class LinkButton(Component):
-    """ A link button component. """
+    """A link button component."""
 
     def __init__(
         self,

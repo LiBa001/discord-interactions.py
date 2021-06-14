@@ -93,14 +93,14 @@ class ApplicationClient(_BaseClient):
             return self._app_url("guilds", guild_id, "commands", cmd_id)
 
     def get_commands(self, guild: int = None) -> List[Cmd]:
-        """ Get all global or guild application commands. """
+        """Get all global or guild application commands."""
 
         r = self._send(Request("GET", self._cmd_url(guild_id=guild)))
 
         return [Cmd.from_dict(cmd) for cmd in r.json()]
 
     def create_command(self, cmd: Union[Cmd, CmdClass], guild: int = None) -> Cmd:
-        """ Create a global or guild application command. """
+        """Create a global or guild application command."""
 
         if not isinstance(cmd, Cmd):
             cmd = cmd.to_application_command()
@@ -112,7 +112,7 @@ class ApplicationClient(_BaseClient):
         return Cmd.from_dict(r.json())
 
     def edit_command(self, cmd: Union[Cmd, CmdClass], guild: int = None) -> Cmd:
-        """ Edit a global or guild application command. """
+        """Edit a global or guild application command."""
 
         if not isinstance(cmd, Cmd):
             cmd = cmd.to_application_command()
@@ -128,14 +128,14 @@ class ApplicationClient(_BaseClient):
         return Cmd.from_dict(r.json())
 
     def delete_command(self, cmd_id: int, guild: int = None):
-        """ Delete a global or guild application command. """
+        """Delete a global or guild application command."""
 
         self._send(Request("DELETE", self._cmd_url(cmd_id, guild)))
 
     def bulk_overwrite_commands(
         self, commands: List[Union[Cmd, CmdClass]], guild: int = None
     ) -> List[Cmd]:
-        """ Overwrite all existing global/guild commands. """
+        """Overwrite all existing global/guild commands."""
 
         commands_data = []
         for cmd in commands:
@@ -150,7 +150,7 @@ class ApplicationClient(_BaseClient):
         return [Cmd.from_dict(cmd) for cmd in r.json()]
 
     def get_guild_command_permissions(self, guild: int) -> List[GuildPermissions]:
-        """ Fetch command permissions for all commands for your app in a guild. """
+        """Fetch command permissions for all commands for your app in a guild."""
 
         r = self._send(Request("GET", f"{self._cmd_url(guild)}/permissions"))
 
@@ -191,7 +191,7 @@ class InteractionClient(_BaseClient):
         return self._app_url(self._interaction.token, *path)
 
     def create_response(self, resp: InteractionResponse):
-        """ Create a response to an interaction from the gateway. """
+        """Create a response to an interaction from the gateway."""
 
         url = "{0}/interactions/{1.id}/{1.token}/callback".format(
             API_BASE_URL,
@@ -201,28 +201,28 @@ class InteractionClient(_BaseClient):
         self._send(Request("POST", url, json=resp.to_dict()))
 
     def edit_response(self, data: InteractionApplicationCommandCallbackData):
-        """ Edit the initial Interaction response. """
+        """Edit the initial Interaction response."""
 
         self._send(
             Request("PATCH", self._url("messages/@original"), json=data.to_dict())
         )
 
     def delete_response(self):
-        """ Delete the initial Interaction response. """
+        """Delete the initial Interaction response."""
 
         self._send(Request("DELETE", self._url("messages/@original")))
 
     def create_message(self, msg: FollowupMessage):  # TODO: return message
-        """ Create a followup message for an Interaction. """
+        """Create a followup message for an Interaction."""
 
         self._send(Request("POST", self._url(), json=msg.to_dict()))
 
     def edit_message(self, msg_id: int, msg: FollowupMessage):
-        """ Edit a followup message for an Interaction. """
+        """Edit a followup message for an Interaction."""
 
         self._send(Request("PATCH", self._url("messages", msg_id), json=msg.to_dict()))
 
     def delete_message(self, msg_id: int):
-        """ Delete a followup message for an Interaction. """
+        """Delete a followup message for an Interaction."""
 
         self._send(Request("DELETE", self._url("messages", msg_id)))
