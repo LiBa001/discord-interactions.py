@@ -66,7 +66,12 @@ _CommandCallback = Union[
 ]
 _AfterCommandCallback = Callable[[AfterCommandContext], None]
 _DecoratedCommand = Union[ApplicationCommand, str, _CommandCallback, Type[ocm.Command]]
-_ComponentCallback = Callable[[ComponentContext], Union[InteractionResponse, str, None]]
+
+_ComponentCallbackReturnType = Union[InteractionResponse, str, None]
+_ComponentCallback = Union[
+    Callable[[], _ComponentCallbackReturnType],
+    Callable[[ComponentContext], _ComponentCallbackReturnType],
+]
 _AfterComponentCallback = Callable[[AfterComponentContext], None]
 
 
@@ -416,9 +421,17 @@ class Interactions:
             if component_data is None:
                 return  # TODO: implement fallback mechanism
 
-            # TODO: implement custom_id arg parsing & support zero arg callbacks
+            # TODO: implement custom_id arg parsing
+
+            arg_count = component_data.callback.__code__.co_argcount
+
+            if arg_count == 0:
+                args = ()
+            else:
+                args = (ctx,)
+
             try:
-                resp = component_data.callback(ctx)  # call the callback
+                resp = component_data.callback(*args)  # call the callback
             except Exception as e:
                 if component_data.error_callback:
                     resp = component_data.error_callback(e)
