@@ -416,22 +416,30 @@ class Interactions:
             # a message component has been interacted with (e.g. button clicked)
             logger.debug("incoming message component interaction")
             ctx = ComponentContext(interaction)
-            component_data = self._components.get(ctx.custom_id)
+            prefix, *custom_args = ctx.custom_id.split(":")
+            component_data = self._components.get(prefix)
 
             if component_data is None:
                 return  # TODO: implement fallback mechanism
 
-            # TODO: implement custom_id arg parsing
-
-            arg_count = component_data.callback.__code__.co_argcount
+            cb = component_data.callback
+            arg_count = cb.__code__.co_argcount
 
             if arg_count == 0:
                 args = ()
-            else:
+            elif arg_count == 1:
                 args = (ctx,)
+            else:
+                annotations = cb.__annotations__
+                zipped_args = zip(cb.__code__.co_varnames[1:arg_count], custom_args)
+                # convert args to annotated types
+                custom_args = [
+                    annotations.get(name, str)(value) for name, value in zipped_args
+                ]
+                args = (ctx, *custom_args)
 
             try:
-                resp = component_data.callback(*args)  # call the callback
+                resp = cb(*args)  # call the callback
             except Exception as e:
                 if component_data.error_callback:
                     resp = component_data.error_callback(e)
@@ -578,7 +586,7 @@ class Interactions:
         except AttributeError:
             return response
 
-        if interaction is None:
+        if interaction is None or self._app.config["TESTING"]:
             return response
 
         if interaction.type == InteractionType.APPLICATION_COMMAND:
@@ -644,13 +652,12 @@ class Interactions:
         def decorator(f: _CommandCallback) -> CommandData:
             if command is not None:
                 return self.register_command(command, f)
-            elif len(annotations := f.__annotations__.values()) > 0:
-                _command = next(
-                    iter(annotations)
-                )  # get :class:`ocm.Command` from type annotation
-                return self.register_command(_command, f)
-            else:
-                return self.register_command(f.__name__.lower().strip("_"), f)
+            elif len(annotations := f.__annotations__.values()) == 1:
+                _command = next(iter(annotations))  # get 'ocm.Command' from annotation
+                if issubclass(_command, ocm.Command):
+                    return self.register_command(_command, f)
+
+            return self.register_command(f.__name__.lower().strip("_"), f)
 
         return decorator(_f) if _f is not None else decorator
 

@@ -2,14 +2,14 @@ import pytest
 from flask import Response, Flask
 from typing import Tuple, TypeVar
 
-from examples import flask_webhook, flask_webhook_ocm
+from examples import flask_webhook, flask_webhook_ocm, flask_webhook_components
 
-from discord_interactions import InteractionType, InteractionCallbackType
+from discord_interactions import InteractionType, InteractionCallbackType, ComponentType
 
 DO_NOT_VALIDATE = TypeVar("DO_NOT_VALIDATE")
 
-test_apps = [flask_webhook.app, flask_webhook_ocm.app]
-test_data = [
+command_apps = [flask_webhook.app, flask_webhook_ocm.app]
+command_data = [
     (
         {
             "id": "44444",
@@ -135,17 +135,13 @@ test_data = [
 ]
 
 
-@pytest.mark.parametrize("app", test_apps)
-@pytest.mark.parametrize("data", test_data)
-def test_commands(app: Flask, data: Tuple[dict, dict]):
-    """Test the echo command."""
-
+def _test_interaction(app: Flask, data: Tuple[dict, dict], i_type: InteractionType):
     app.config["TESTING"] = True
 
     interaction = {
         "id": "11111",
         "application_id": "55555",
-        "type": InteractionType.APPLICATION_COMMAND.value,
+        "type": i_type.value,
         "data": data[0],
         "guild_id": "22222",
         "channel_id": "33333",
@@ -176,3 +172,44 @@ def test_commands(app: Flask, data: Tuple[dict, dict]):
             interaction_response["data"][key] = DO_NOT_VALIDATE
 
     assert interaction_response == expected_response
+
+
+@pytest.mark.parametrize("app", command_apps)
+@pytest.mark.parametrize("data", command_data)
+def test_commands(app: Flask, data: Tuple[dict, dict]):
+    """Test application commands."""
+
+    _test_interaction(app, data, InteractionType.APPLICATION_COMMAND)
+
+
+component_apps = [flask_webhook_components.app]
+component_data = [
+    (
+        {
+            "custom_id": "my_button",
+            "component_type": ComponentType.Button.value,
+        },
+        {
+            "type": InteractionCallbackType.UPDATE_MESSAGE.value,
+            "data": {"content": "test-user clicked the button"},
+        },
+    ),
+    (
+        {
+            "custom_id": "confirm_deletion:42",
+            "component_type": ComponentType.Button.value,
+        },
+        {
+            "type": InteractionCallbackType.UPDATE_MESSAGE.value,
+            "data": {"content": "successfully deleted resource 42"},
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("app", component_apps)
+@pytest.mark.parametrize("data", component_data)
+def test_components(app: Flask, data: Tuple[dict, dict]):
+    """Test message components."""
+
+    _test_interaction(app, data, InteractionType.MESSAGE_COMPONENT)

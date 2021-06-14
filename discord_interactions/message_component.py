@@ -86,8 +86,8 @@ class Component:
 class ActionRow(Component):
     """A non-interactive container component for other types of components."""
 
-    def __init__(self, components: List[Component]):
-        super().__init__(type=ComponentType.ActionRow, components=components)
+    def __init__(self, *components: Component):
+        super().__init__(type=ComponentType.ActionRow, components=list(components))
 
 
 class Button(Component):
