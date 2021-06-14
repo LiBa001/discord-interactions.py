@@ -15,6 +15,7 @@ from .interaction_response import (
     InteractionApplicationCommandCallbackData,
     FollowupMessage,
     Response,
+    ComponentResponse,
 )
 
 from .application_command import (
@@ -44,6 +45,7 @@ from .models import (
     Channel,
     MessageType,
     Message,
+    PartialEmoji,
 )
 from .client import ApplicationClient, InteractionClient
 from .utils import verify_key

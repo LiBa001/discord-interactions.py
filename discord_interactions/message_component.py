@@ -23,8 +23,10 @@ SOFTWARE.
 """
 
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Union
 from enum import Enum
+
+from .models import PartialEmoji
 
 
 class ComponentType(Enum):
@@ -52,7 +54,7 @@ class Component:
     # valid for buttons
     style: Optional[ButtonStyle] = None
     label: Optional[str] = None
-    emoji: Optional[dict] = None
+    emoji: Union[PartialEmoji, str, None] = None
     custom_id: Optional[str] = None
     url: Optional[str] = None
     disabled: Optional[bool] = None
@@ -71,8 +73,10 @@ class Component:
             else:
                 data["custom_id"] = self.custom_id
 
-        if self.emoji:
-            data["emoji"] = self.emoji
+        if isinstance(self.emoji, str):
+            data["emoji"] = PartialEmoji(name=self.emoji).to_dict()
+        if isinstance(self.emoji, PartialEmoji):
+            data["emoji"] = self.emoji.to_dict()
         if self.disabled is not None:
             data["disabled"] = self.disabled
 
@@ -92,9 +96,9 @@ class Button(Component):
     def __init__(
         self,
         custom_id: str,
-        style: ButtonStyle,
+        style: ButtonStyle = ButtonStyle.PRIMARY,
         label: str = "",
-        emoji: Optional[dict] = None,
+        emoji: Union[PartialEmoji, str, None] = None,
         disabled: bool = False,
     ):
         super().__init__(
@@ -115,7 +119,7 @@ class LinkButton(Component):
         url: str,
         style: ButtonStyle,
         label: str = "",
-        emoji: Optional[dict] = None,
+        emoji: Union[PartialEmoji, str, None] = None,
         disabled: bool = False,
     ):
         super().__init__(

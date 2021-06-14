@@ -122,6 +122,8 @@ class Response(InteractionResponse):
     :param ephemeral: Whether or not the response should be ephemeral (default: `False`)
     """
 
+    _TYPE = InteractionCallbackType.CHANNEL_MESSAGE
+
     def __init__(
         self,
         content: Optional[str] = None,
@@ -134,11 +136,15 @@ class Response(InteractionResponse):
             kwargs["flags"] |= ResponseFlags.EPHEMERAL
 
         super().__init__(
-            type=InteractionCallbackType.CHANNEL_MESSAGE,
+            type=self._TYPE,
             data=InteractionApplicationCommandCallbackData(
                 content=content, embeds=[embed] if embed else [], **kwargs
             ),
         )
+
+
+class ComponentResponse(Response):
+    _TYPE = InteractionCallbackType.UPDATE_MESSAGE
 
 
 @dataclass()

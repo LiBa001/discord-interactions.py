@@ -28,6 +28,7 @@ SOFTWARE.
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
+from dataclasses import dataclass
 
 
 class UserFlag(Enum):
@@ -371,3 +372,13 @@ class Message:
         self.interaction = data.get("interaction")
         self.thread = (c := data.get("thread")) and Channel(**c)
         self.components = data.get("components")  # TODO: convert to component object
+
+
+@dataclass
+class PartialEmoji:
+    id: Optional[int] = None
+    name: Optional[str] = None
+    animated: bool = False
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "name": self.name, "animated": self.animated}
