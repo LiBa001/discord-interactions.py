@@ -605,7 +605,7 @@ class Interactions:
             target = self._commands[interaction.data.name]
             ctx = AfterCommandContext(interaction, interaction_response)
         elif interaction.type == InteractionType.MESSAGE_COMPONENT:
-            target = self._components[interaction.data.custom_id]
+            target = self._components[interaction.data.custom_id.split(":")[0]]
             ctx = AfterComponentContext(interaction, interaction_response)
         else:
             return response
