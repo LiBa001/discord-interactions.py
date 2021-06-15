@@ -70,17 +70,17 @@ class InteractionApplicationCommandCallbackData:
     def to_dict(self) -> dict:
         data = {}
 
-        if self.content:
+        if self.content is not None:
             data["content"] = str(self.content)
         if self.tts:
             data["tts"] = self.tts
-        if self.embeds:
+        if self.embeds is not None:
             data["embeds"] = [embed.to_dict() for embed in self.embeds]
         if self.allowed_mentions:
             data["allowed_mentions"] = self.allowed_mentions.to_dict()
         if self.flags:
             data["flags"] = self.flags.value
-        if self.components:
+        if self.components is not None:
             data["components"] = [c.to_dict() for c in self.components]
 
         return data
