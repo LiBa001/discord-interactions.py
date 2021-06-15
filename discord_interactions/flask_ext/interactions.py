@@ -484,8 +484,17 @@ class Interactions:
         else:
             cb_args = options
             cb_kwargs = []
-        # TODO: implement arg conversion based on annotations
-        return [o.value for o in cb_args], {o.name: o.value for o in cb_kwargs}
+
+        annotations = cb.__annotations__
+
+        zipped_args = zip(cb.__code__.co_varnames[1:len(cb_args) + 1], cb_args)
+
+        def convert(name, value):
+            return t(value) if (t := annotations.get(name)) else value
+
+        cb_args = [convert(name, value) for name, value in zipped_args]
+        cb_kwargs = {o.name: convert(o.name, o.value) for o in cb_kwargs}
+        return cb_args, cb_kwargs
 
     @classmethod
     def _handle_subcommand(
