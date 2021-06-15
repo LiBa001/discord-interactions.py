@@ -427,16 +427,19 @@ class Interactions:
 
             if arg_count == 0:
                 args = ()
-            elif arg_count == 1:
-                args = (ctx,)
             else:
-                annotations = cb.__annotations__
-                zipped_args = zip(cb.__code__.co_varnames[1:arg_count], custom_args)
-                # convert args to annotated types
-                custom_args = [
-                    annotations.get(name, str)(value) for name, value in zipped_args
-                ]
-                args = (ctx, *custom_args)
+                if ctx_class := cb.__annotations__.get(cb.__code__.co_varnames[0]):
+                    ctx = ctx_class(interaction)
+                if arg_count == 1:
+                    args = (ctx,)
+                else:
+                    annotations = cb.__annotations__
+                    zipped_args = zip(cb.__code__.co_varnames[1:arg_count], custom_args)
+                    # convert args to annotated types
+                    custom_args = [
+                        annotations.get(name, str)(value) for name, value in zipped_args
+                    ]
+                    args = (ctx, *custom_args)
 
             try:
                 resp = cb(*args)  # call the callback
@@ -487,7 +490,7 @@ class Interactions:
 
         annotations = cb.__annotations__
 
-        zipped_args = zip(cb.__code__.co_varnames[1:len(cb_args) + 1], cb_args)
+        zipped_args = zip(cb.__code__.co_varnames[1 : len(cb_args) + 1], cb_args)
 
         def convert(name, value):
             return t(value) if (t := annotations.get(name)) else value
