@@ -61,7 +61,7 @@ The most API-like example with the flask extension is this:
 
 .. code-block:: py
 
-    from discord_interactions.flask_ext import Interactions
+    from discord_interactions.ext.flask import Interactions
     from discord_interactions import (
         ApplicationCommand,
         ApplicationCommandOption,
@@ -137,7 +137,7 @@ So, the simplest possible example looks like this:
 
 .. code-block:: py
 
-    from discord_interactions.flask_ext import Interactions
+    from discord_interactions.ext.flask import Interactions
     from discord_interactions.ocm import Command, Option
     from flask import Flask
     import os

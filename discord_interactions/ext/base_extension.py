@@ -5,6 +5,9 @@ MIT License
 
 Copyright (c) 2020-2021 Linus Bartsch
 
+This file contains (partly modified) contents of https://github.com/Rapptz/discord.py.
+Respective Copyright (c) 2015-2020 Rapptz
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -24,239 +27,61 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from flask import Flask, request, jsonify, Response, g
 from discord_interactions import (
     Interaction,
     InteractionType,
-    InteractionResponse,
-    InteractionCallbackType,
-    ResponseFlags,
-    InteractionApplicationCommandCallbackData,
     ApplicationCommandInteractionDataOption,
-    verify_key,
+    InteractionResponse,
+    ResponseFlags,
+    InteractionCallbackType,
+    InteractionApplicationCommandCallbackData,
     ApplicationCommand,
     ApplicationClient,
 )
 from discord_interactions import ocm
-from typing import Callable, Union, Type, Dict, List, Tuple, Optional, Any
-from threading import Thread
+from typing import Callable, Union, Dict, List, Tuple, Optional
 import logging
+import importlib
+import sys
+import types
+from abc import ABC, abstractmethod
 
 from .context import (
     AfterCommandContext,
     CommandContext,
-    ComponentContext,
     AfterComponentContext,
+    ComponentContext,
 )
+from .command import (
+    SubCommandData,
+    CommandData,
+    _CommandCallbackReturnType,
+    _DecoratedCommand,
+    _CommandCallback,
+    command as command_decorator,
+)
+from .component import ComponentData, _ComponentCallback
+from . import errors
 
 
 logger = logging.getLogger("discord_interactions")
 
 
-_CommandCallbackReturnType = Union[
-    InteractionResponse, str, None, Tuple[Optional[str], bool]
-]
-_CommandCallback = Union[
-    Callable[[], _CommandCallbackReturnType],
-    Callable[
-        [Union[Interaction, ocm.Command, ocm.Option, CommandContext]],
-        _CommandCallbackReturnType,
-    ],
-    Callable[[CommandContext, Any], _CommandCallbackReturnType],
-]
-_AfterCommandCallback = Callable[[AfterCommandContext], None]
-_DecoratedCommand = Union[ApplicationCommand, str, _CommandCallback, Type[ocm.Command]]
-
-_ComponentCallbackReturnType = Union[InteractionResponse, str, None]
-_ComponentCallback = Union[
-    Callable[[], _ComponentCallbackReturnType],
-    Callable[[ComponentContext], _ComponentCallbackReturnType],
-]
-_AfterComponentCallback = Callable[[AfterComponentContext], None]
+def _is_submodule(parent, child):
+    return parent == child or child.startswith(parent + ".")
 
 
-class SubCommandData:
-    """
-    Stores and handles registering callbacks for a registered
-    subcommand or subcommand group.
-
-    :type name: str
-    :param name: Name of the subcommand (group).
-
-    :param cb:
-        The function to be called when the subcommand or
-        a subcommand in the subcommand group is invoked.
-    """
-
-    def __init__(self, name: str, cb: _CommandCallback):
-        self.name = name
-        self.callback = cb
-        self.after_callback = None
-        self.fallback_callback = None
-        self.error_callback = None
-        self._subcommands: Dict[str, SubCommandData] = {}
-
-    @property
-    def subcommands(self) -> Dict[str, "SubCommandData"]:
-        return self._subcommands
-
-    def after_command(self, f: _AfterCommandCallback):
-        """
-        A decorator to register a function that gets called after a command has run.
-        The function will be internally called from within Flask's `after_request`
-        function.
-        """
-
-        self.after_callback = f
-
-    def register_subcommand(
-        self, name: str, callback: _CommandCallback
-    ) -> "SubCommandData":
-        """
-        Register a callback for a subcommand or subcommand group to the parent
-        command, subcommand or subcommand group.
-
-        :type name: `str`
-        :param name:
-            The name of the subcommand or subcommand group.
-
-        :type callback: `callable`
-        :param callback:
-            The function to register as a callback.
-
-        :rtype: :class:`SubCommandData`
-        :return:
-            An object that can be used to register further callbacks for the subcommand,
-            subcommand group or it's children.
-        """
-
-        cmd = SubCommandData(name, callback)
-        self._subcommands[name] = cmd
-        return cmd
-
-    def subcommand(
-        self, name: str = ""
-    ) -> Callable[[_CommandCallback], "SubCommandData"]:
-        """
-        A decorator to register callbacks for subcommands or subcommand groups to the
-        parent.
-        Calls :meth:`register_subcommand` internally.
-
-        :type name: `str`
-        :param name:
-            The subcommands name.
-            If left empty, the name will be derived from the function name.
-
-        :return: The actual decorator.
-        """
-
-        def decorator(f: _CommandCallback):
-            return self.register_subcommand(name or f.__name__.lower().strip("_"), f)
-
-        return decorator
-
-    def fallback(self, f: Callable):
-        """
-        A decorator to register a fallback callback function that will be called for
-        all subcommands that don't have their own callback registered
-        or if no subcommand was provided at all (this case should never occur).
-
-        :param f: The callback function.
-        """
-
-        self.fallback_callback = f
-
-    def on_error(self, f: Callable[[Exception], _CommandCallbackReturnType]):
-        """
-        A decorator to set the command-level error callback function.
-        The provided function will be called when an exception is raised in any other
-        callback of this command
-        (or subcommands if not handled by their own error handler).
-
-        :param f: The error callback function.
-        """
-
-        self.error_callback = f
-
-
-class CommandData(SubCommandData):
-    """
-    Stores and handles registering callbacks for a registered command.
-
-    :type name: str
-    :param name: Name of the command.
-
-    :param cb: The function to be called when the command is invoked.
-
-    :type cmd: Optional[:class:`ApplicationCommand`]
-    :param cmd: The object storing structural information for the command.
-    """
-
-    def __init__(self, name: str, cb: _CommandCallback, cmd: ApplicationCommand = None):
-        super().__init__(name, cb)
-        self.application_command = cmd
-
-
-class ComponentData:
-    """
-    Stores and handles registering callbacks for a registered message component.
-
-    :type custom_id: str
-    :param custom_id: Custom id to identify the component.
-
-    :param cb:
-        The function to be called when the component is invoked
-        (e.g. button clicked).
-    """
-
-    def __init__(self, custom_id: str, cb: _ComponentCallback):
-        self.custom_id = custom_id
-        self.callback = cb
-        self.after_callback = None
-        self.error_callback = None
-
-    def after_component(self, f: _AfterComponentCallback):
-        """
-        A decorator to register a function that gets called after a component invocation
-        has returned.
-        The function will be internally called from within Flask's `after_request`
-        function.
-        """
-
-        self.after_callback = f
-
-    def on_error(self, f: Callable[[Exception], _CommandCallbackReturnType]):
-        """
-        A decorator to set the component error callback function.
-        The provided function will be called when an exception is raised in any other
-        callback of this component.
-
-        :param f: The error callback function.
-        """
-
-        self.error_callback = f
-
-
-class Interactions:
-    def __init__(
-        self, app: Flask, public_key: str, app_id: int = None, path: str = "/"
-    ):
-        self._app = app
+class BaseExtension(ABC):
+    def __init__(self, public_key: str, app_id: int = None):
         self._public_key = public_key
         self._app_id = app_id
-        self._path = path
-
-        app.add_url_rule(path, "interactions", self._main, methods=["POST"])
-        app.after_request_funcs.setdefault(None, []).append(self._after_request)
 
         self._commands: Dict[str, CommandData] = {}
         self._components: Dict[str, ComponentData] = {}
 
-        self._error_callback = None
+        self.__extensions = {}
 
-    @property
-    def path(self) -> str:
-        return self._path
+        self._error_callback = None
 
     @property
     def commands(self) -> List[ApplicationCommand]:
@@ -290,32 +115,13 @@ class Interactions:
 
         client.bulk_overwrite_commands(self.commands, guild=guild)
 
-    def _verify_request(self):
-        signature = request.headers.get("X-Signature-Ed25519")
-        timestamp = request.headers.get("X-Signature-Timestamp")
-
-        if signature is None or timestamp is None:
-            return False
-
-        return verify_key(request.data, signature, timestamp, self._public_key)
-
-    def _main(self):
-        g.interaction = None
-        g.interaction_response = None
-
-        # Verify request
-        if not self._app.config["TESTING"]:
-            if not self._verify_request():
-                logger.debug("invalid request signature")
-                return "Bad request signature", 401
-
-        # Handle interactions
-        interaction = Interaction(**request.json)
-
+    def _handle_interaction(
+        self, interaction: Interaction
+    ) -> Optional[InteractionResponse]:
         if interaction.type == InteractionType.PING:
             # handle a ping
             logger.debug("incoming ping interaction")
-            return jsonify(InteractionResponse(InteractionCallbackType.PONG).to_dict())
+            return InteractionResponse(InteractionCallbackType.PONG)
         elif interaction.type == InteractionType.APPLICATION_COMMAND:
             # handle an application command (slash command)
             logger.debug("incoming application command interaction")
@@ -407,20 +213,14 @@ class Interactions:
                     data=r_data,
                 )
 
-            g.interaction = interaction
-            g.interaction_response = interaction_response
-
-            return jsonify(interaction_response.to_dict())
+            return interaction_response
 
         elif interaction.type == InteractionType.MESSAGE_COMPONENT:
             # a message component has been interacted with (e.g. button clicked)
             logger.debug("incoming message component interaction")
             ctx = ComponentContext(interaction)
             prefix, *custom_args = ctx.custom_id.split(":")
-            component_data = self._components.get(prefix)
-
-            if component_data is None:
-                return  # TODO: implement fallback mechanism
+            component_data = self._components[prefix]
 
             cb = component_data.callback
             arg_count = cb.__code__.co_argcount
@@ -464,13 +264,14 @@ class Interactions:
                     InteractionCallbackType.UPDATE_MESSAGE, r_data
                 )
 
-            g.interaction = interaction
-            g.interaction_response = interaction_response
-
-            return jsonify(interaction_response.to_dict())
+            return interaction_response
 
         else:
-            return "Unknown interaction type", 501
+            return None
+
+    @abstractmethod
+    def _main(self, *args, **kwargs):
+        resp = self._handle_interaction(...)
 
     @staticmethod
     def _get_cb_args_kwargs(
@@ -591,16 +392,9 @@ class Interactions:
 
         return resp
 
-    def _after_request(self, response: Response):
-        try:
-            interaction = g.interaction
-            interaction_response = g.interaction_response
-        except AttributeError:
-            return response
-
-        if interaction is None or self._app.config["TESTING"]:
-            return response
-
+    def _get_after_request_data(
+        self, interaction: Interaction, interaction_response: InteractionResponse
+    ) -> Tuple[Union[CommandData, ComponentData, None], Optional[CommandContext]]:
         if interaction.type == InteractionType.APPLICATION_COMMAND:
             target = self._commands[interaction.data.name]
             ctx = AfterCommandContext(interaction, interaction_response)
@@ -608,43 +402,27 @@ class Interactions:
             target = self._components[interaction.data.custom_id.split(":")[0]]
             ctx = AfterComponentContext(interaction, interaction_response)
         else:
-            return response
+            return None, None
 
-        if target.after_callback is not None:
-            t = Thread(target=target.after_callback, args=(ctx,))
-            t.start()
+        return target, ctx
 
-        return response
+    @abstractmethod
+    def _after_request(self, *args, **kwargs):
+        target, ctx = self._get_after_request_data(..., ...)
+        if target.after_callback:
+            target.after_callback(ctx)
 
-    def register_command(
-        self,
-        command: Union[ApplicationCommand, Type[ocm.Command], str],
-        callback: _CommandCallback,
-    ) -> CommandData:
+    def register_command(self, command_data: CommandData) -> CommandData:
         """
-        Register a callback function for a Discord Slash Command.
+        Register data for a Discord Slash Command.
 
-        :param command: The command that the callback is registered for
-        :param callback: The function that is called when the command is triggered
-        :return: An object containing all the command data (e.g. structure, callbacks)
+        :param command_data:
+            An object containing all the command data (e.g. structure, callbacks)
+        :return: command data
         """
 
-        if isinstance(command, str):
-            cmd = CommandData(command, callback)
-        elif isinstance(command, ApplicationCommand):
-            cmd = CommandData(command.name, callback, command)
-        elif issubclass(command, ocm.Command):
-            cmd = CommandData(
-                command.__cmd_name__, callback, command.to_application_command()
-            )
-        else:
-            raise TypeError(
-                "'command' must be 'str', 'ApplicationCommand'"
-                + "or subclass of 'ocm.Command'"
-            )
-
-        self._commands[cmd.name] = cmd
-        return cmd
+        self._commands[command_data.name] = command_data
+        return command_data
 
     def command(
         self, command: _DecoratedCommand = None
@@ -661,32 +439,24 @@ class Interactions:
             _f = command
             command = None
 
-        def decorator(f: _CommandCallback) -> CommandData:
-            if command is not None:
-                return self.register_command(command, f)
-            elif len(annotations := f.__annotations__.values()) == 1:
-                _command = next(iter(annotations))  # get 'ocm.Command' from annotation
-                if issubclass(_command, ocm.Command):
-                    return self.register_command(_command, f)
+        dec = command_decorator(command)
 
-            return self.register_command(f.__name__.lower().strip("_"), f)
+        def decorator(f):
+            return self.register_command(dec(f))
 
         return decorator(_f) if _f is not None else decorator
 
-    def register_component(
-        self, component_id: str, callback: Callable
-    ) -> ComponentData:
+    def register_component(self, component_data: ComponentData) -> ComponentData:
         """
-        Register a callback function for a Discord Message Component.
+        Register data for a Discord Message Component.
 
-        :param component_id: The ``custom_id`` specified when creating the component
-        :param callback: The function that is called when the component is triggered
-        :return: An object containing all the component data (e.g. custom_id, callbacks)
+        :param component_data:
+            An object containing all the component data (e.g. custom_id, callbacks)
+        :return: component data
         """
 
-        data = ComponentData(component_id, callback)
-        self._components[component_id] = data
-        return data
+        self._components[component_data.custom_id] = component_data
+        return component_data
 
     def component(
         self, component_id: str
@@ -699,7 +469,7 @@ class Interactions:
         """
 
         def decorator(f: _ComponentCallback) -> ComponentData:
-            return self.register_component(component_id, f)
+            return self.register_component(ComponentData.create_from(component_id, f))
 
         return decorator
 
@@ -713,3 +483,173 @@ class Interactions:
         """
 
         self._error_callback = f
+
+    # extensions
+
+    def _remove_module_references(self, name):
+        pass
+
+    def _call_module_finalizers(self, lib, key):
+        try:
+            func = getattr(lib, "teardown")
+        except AttributeError:
+            pass
+        else:
+            try:
+                func(self)
+            except Exception:
+                pass
+        finally:
+            self.__extensions.pop(key, None)
+            sys.modules.pop(key, None)
+            name = lib.__name__
+            for module in list(sys.modules.keys()):
+                if _is_submodule(name, module):
+                    del sys.modules[module]
+
+    def _load_from_module_spec(self, spec, key):
+        # precondition: key not in self.__extensions
+        lib = importlib.util.module_from_spec(spec)
+        sys.modules[key] = lib
+        try:
+            spec.loader.exec_module(lib)
+        except Exception as e:
+            del sys.modules[key]
+            raise errors.ExtensionFailed(key, e) from e
+
+        try:
+            setup = getattr(lib, "setup")
+        except AttributeError:
+            del sys.modules[key]
+            raise errors.NoEntryPointError(key)
+
+        try:
+            setup(self)
+        except Exception as e:
+            del sys.modules[key]
+            self._remove_module_references(lib.__name__)
+            self._call_module_finalizers(lib, key)
+            raise errors.ExtensionFailed(key, e) from e
+        else:
+            self.__extensions[key] = lib
+
+    def load_extension(self, name):
+        """Loads an extension.
+        An extension is a python module that contains commands, cogs, or
+        listeners.
+        An extension must have a global function, ``setup`` defined as
+        the entry point on what to do when the extension is loaded. This entry
+        point must have a single argument, the ``bot``.
+        Parameters
+        ------------
+        name: :class:`str`
+            The extension name to load. It must be dot separated like
+            regular Python imports if accessing a sub-module. e.g.
+            ``foo.test`` if you want to import ``foo/test.py``.
+        Raises
+        --------
+        ExtensionNotFound
+            The extension could not be imported.
+        ExtensionAlreadyLoaded
+            The extension is already loaded.
+        NoEntryPointError
+            The extension does not have a setup function.
+        ExtensionFailed
+            The extension or its setup function had an execution error.
+        """
+
+        if name in self.__extensions:
+            raise errors.ExtensionAlreadyLoaded(name)
+
+        spec = importlib.util.find_spec(name)
+        if spec is None:
+            raise errors.ExtensionNotFound(name)
+
+        self._load_from_module_spec(spec, name)
+
+    def unload_extension(self, name):
+        """Unloads an extension.
+        When the extension is unloaded, all commands, listeners, and cogs are
+        removed from the bot and the module is un-imported.
+        The extension can provide an optional global function, ``teardown``,
+        to do miscellaneous clean-up if necessary. This function takes a single
+        parameter, the ``bot``, similar to ``setup`` from
+        :meth:`~.Bot.load_extension`.
+        Parameters
+        ------------
+        name: :class:`str`
+            The extension name to unload. It must be dot separated like
+            regular Python imports if accessing a sub-module. e.g.
+            ``foo.test`` if you want to import ``foo/test.py``.
+        Raises
+        -------
+        ExtensionNotLoaded
+            The extension was not loaded.
+        """
+
+        lib = self.__extensions.get(name)
+        if lib is None:
+            raise errors.ExtensionNotLoaded(name)
+
+        self._remove_module_references(lib.__name__)
+        self._call_module_finalizers(lib, name)
+
+    def reload_extension(self, name):
+        """Atomically reloads an extension.
+        This replaces the extension with the same extension, only refreshed. This is
+        equivalent to a :meth:`unload_extension` followed by a :meth:`load_extension`
+        except done in an atomic way. That is, if an operation fails mid-reload then
+        the bot will roll-back to the prior working state.
+        Parameters
+        ------------
+        name: :class:`str`
+            The extension name to reload. It must be dot separated like
+            regular Python imports if accessing a sub-module. e.g.
+            ``foo.test`` if you want to import ``foo/test.py``.
+        Raises
+        -------
+        ExtensionNotLoaded
+            The extension was not loaded.
+        ExtensionNotFound
+            The extension could not be imported.
+        NoEntryPointError
+            The extension does not have a setup function.
+        ExtensionFailed
+            The extension setup function had an execution error.
+        """
+
+        lib = self.__extensions.get(name)
+        if lib is None:
+            raise errors.ExtensionNotLoaded(name)
+
+        # get the previous module states from sys modules
+        modules = {
+            name: module
+            for name, module in sys.modules.items()
+            if _is_submodule(lib.__name__, name)
+        }
+
+        try:
+            # Unload and then load the module...
+            self._remove_module_references(lib.__name__)
+            self._call_module_finalizers(lib, name)
+            self.load_extension(name)
+        except Exception as e:
+            # if the load failed, the remnants should have been
+            # cleaned from the load_extension function call
+            # so let's load it from our old compiled library.
+            lib.setup(self)
+            self.__extensions[name] = lib
+
+            # revert sys.modules back to normal and raise back to caller
+            sys.modules.update(modules)
+            raise
+
+    @property
+    def extensions(self):
+        """
+        Mapping[:class:`str`, :class:`py:types.ModuleType`]:
+        A read-only mapping of extension name to extension.
+        """
+
+        return types.MappingProxyType(self.__extensions)

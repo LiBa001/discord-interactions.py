@@ -1,8 +1,5 @@
-from discord_interactions.flask_ext import (
-    Interactions,
-    AfterCommandContext,
-    CommandContext,
-)
+from discord_interactions.ext.flask import Interactions
+from discord_interactions.ext import CommandContext, AfterCommandContext
 from discord_interactions import (
     ApplicationCommand,
     ApplicationCommandOption,

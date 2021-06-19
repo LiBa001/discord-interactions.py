@@ -1,10 +1,7 @@
 from flask import Flask
 import os
-from discord_interactions.flask_ext import (
-    Interactions,
-    ComponentContext,
-    AfterComponentContext,
-)
+from discord_interactions.ext.flask import Interactions
+from discord_interactions.ext import ComponentContext, AfterComponentContext
 from discord_interactions import (
     Button,
     ButtonStyle,

@@ -1,4 +1,5 @@
-from discord_interactions.flask_ext import Interactions, CommandContext
+from discord_interactions.ext.flask import Interactions
+from discord_interactions.ext import CommandContext
 from discord_interactions.ocm import Command, SubCommand, Option, OptionChoices
 from discord_interactions import User
 from flask import Flask
