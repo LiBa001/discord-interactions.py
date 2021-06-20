@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from discord_interactions import (
     InteractionClient,
     Interaction,
@@ -32,10 +34,16 @@ from discord_interactions import (
     FollowupMessage,
 )
 
+if TYPE_CHECKING:
+    from .base_extension import BaseExtension
+
+# TODO: add docstrings
+
 
 class CommandContext:
-    def __init__(self, interaction: Interaction):
+    def __init__(self, ext: BaseExtension, interaction: Interaction):
         self._interaction = interaction
+        self._ext = ext
 
     @property
     def interaction(self) -> Interaction:
@@ -45,10 +53,19 @@ class CommandContext:
     def app_id(self) -> int:
         return self._interaction.application_id
 
+    @property
+    def ext(self):
+        return self._ext
+
 
 class AfterCommandContext(CommandContext):
-    def __init__(self, interaction: Interaction, response: InteractionResponse):
-        super(AfterCommandContext, self).__init__(interaction)
+    def __init__(
+        self,
+        ext: BaseExtension,
+        interaction: Interaction,
+        response: InteractionResponse,
+    ):
+        super(AfterCommandContext, self).__init__(ext, interaction)
 
         self._response = response
         self._client = InteractionClient(self.interaction)

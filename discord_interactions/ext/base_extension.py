@@ -128,7 +128,7 @@ class BaseExtension(ABC):
             cmd_name = interaction.data.name
             cmd_data = self._commands[cmd_name]
             cb = cmd_data.callback
-            ctx = CommandContext(interaction)
+            ctx = CommandContext(self, interaction)
             cmd: Optional[ocm.Command] = None
 
             if cb.__code__.co_argcount > 1:
@@ -143,7 +143,7 @@ class BaseExtension(ABC):
                     if issubclass(cmd_type, ocm.Command):
                         cb_data = cmd = cmd_type.wrap(interaction)
                     elif issubclass(cmd_type, CommandContext):
-                        cb_data = ctx = cmd_type(interaction)
+                        cb_data = ctx = cmd_type(self, interaction)
 
                 args, kwargs = (cb_data,), {}
             else:
@@ -218,7 +218,7 @@ class BaseExtension(ABC):
         elif interaction.type == InteractionType.MESSAGE_COMPONENT:
             # a message component has been interacted with (e.g. button clicked)
             logger.debug("incoming message component interaction")
-            ctx = ComponentContext(interaction)
+            ctx = ComponentContext(self, interaction)
             prefix, *custom_args = ctx.custom_id.split(":")
             component_data = self._components[prefix]
 
@@ -229,7 +229,7 @@ class BaseExtension(ABC):
                 args = ()
             else:
                 if ctx_class := cb.__annotations__.get(cb.__code__.co_varnames[0]):
-                    ctx = ctx_class(interaction)
+                    ctx = ctx_class(self, interaction)
                 if arg_count == 1:
                     args = (ctx,)
                 else:
@@ -397,10 +397,10 @@ class BaseExtension(ABC):
     ) -> Tuple[Union[CommandData, ComponentData, None], Optional[CommandContext]]:
         if interaction.type == InteractionType.APPLICATION_COMMAND:
             target = self._commands[interaction.data.name]
-            ctx = AfterCommandContext(interaction, interaction_response)
+            ctx = AfterCommandContext(self, interaction, interaction_response)
         elif interaction.type == InteractionType.MESSAGE_COMPONENT:
             target = self._components[interaction.data.custom_id.split(":")[0]]
-            ctx = AfterComponentContext(interaction, interaction_response)
+            ctx = AfterComponentContext(self, interaction, interaction_response)
         else:
             return None, None
 
