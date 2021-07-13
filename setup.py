@@ -27,7 +27,7 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=["pynacl", "requests"],
-    extras_require={"flask": ["flask"]},
+    extras_require={"flask": ["flask[async]>=2.0"]},
     keywords="discord discord-py discord-bot wrapper",
     packages=find_packages(exclude=["examples", "tests", "docs"]),
     data_files=None,

@@ -24,14 +24,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Callable, Union, Tuple, Optional, Any, Type, Dict
+from typing import Callable, Union, Tuple, Optional, Any, Type, Dict, Awaitable
 
 from .. import Interaction, InteractionResponse, ApplicationCommand, ocm
 from .context import CommandContext, AfterCommandContext
 
 
-_CommandCallbackReturnType = Union[
+_CommandCallbackReturnTypeResolved = Union[
     InteractionResponse, str, None, Tuple[Optional[str], bool]
+]
+_CommandCallbackReturnType = Union[
+    Awaitable[_CommandCallbackReturnTypeResolved], _CommandCallbackReturnTypeResolved
 ]
 _CommandCallback = Union[
     Callable[[], _CommandCallbackReturnType],

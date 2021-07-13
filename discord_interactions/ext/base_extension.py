@@ -39,12 +39,13 @@ from discord_interactions import (
     ApplicationClient,
 )
 from discord_interactions import ocm
-from typing import Callable, Union, Dict, List, Tuple, Optional
+from typing import Callable, Union, Dict, List, Tuple, Optional, Coroutine
 import logging
 import importlib
 import sys
 import types
 from abc import ABC, abstractmethod
+import inspect
 
 from .context import (
     AfterCommandContext,
@@ -115,7 +116,7 @@ class BaseExtension(ABC):
 
         client.bulk_overwrite_commands(self.commands, guild=guild)
 
-    def _handle_interaction(
+    async def _handle_interaction(
         self, interaction: Interaction
     ) -> Optional[InteractionResponse]:
         if interaction.type == InteractionType.PING:
@@ -151,6 +152,8 @@ class BaseExtension(ABC):
 
             try:
                 resp = cb(*args, **kwargs)
+                if inspect.iscoroutinefunction(cb):
+                    resp = await resp
             except Exception as e:
                 if cmd_data.error_callback:
                     resp = cmd_data.error_callback(e)
@@ -173,7 +176,7 @@ class BaseExtension(ABC):
                         if cmd is not None:
                             ocm_sub = cmd.get_options()[option.name]
                         try:
-                            resp = self._handle_subcommand(
+                            resp = await self._handle_subcommand(
                                 ctx, option, sub_cmd_data, ocm_sub
                             )
                         except Exception as e:
@@ -183,6 +186,9 @@ class BaseExtension(ABC):
                                 resp = self._error_callback(e)
                             else:
                                 raise e
+
+            if isinstance(resp, Coroutine):
+                resp = await resp
 
             # build the actual interaction response
             if isinstance(resp, InteractionResponse):
@@ -301,7 +307,7 @@ class BaseExtension(ABC):
         return cb_args, cb_kwargs
 
     @classmethod
-    def _handle_subcommand(
+    async def _handle_subcommand(
         cls,
         ctx: CommandContext,
         interaction_sub: ApplicationCommandInteractionDataOption,

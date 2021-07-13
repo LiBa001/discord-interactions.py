@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from flask import Flask, request, jsonify, Response, g
+from flask import Flask, request, jsonify, Response, g, current_app
 from discord_interactions import Interaction, verify_key
 from threading import Thread
 import logging
@@ -48,7 +48,9 @@ class Interactions(BaseExtension):
         self._app = app
         self._path = path
 
-        app.add_url_rule(path, "interactions", self._main, methods=["POST"])
+        app.add_url_rule(
+            path, "interactions", app.ensure_sync(self._main), methods=["POST"]
+        )
         app.after_request_funcs.setdefault(None, []).append(self._after_request)
 
     @property
@@ -64,12 +66,12 @@ class Interactions(BaseExtension):
 
         return verify_key(request.data, signature, timestamp, self._public_key)
 
-    def _main(self):
+    async def _main(self):
         g.interaction = None
         g.interaction_response = None
 
         # Verify request
-        if not self._app.config["TESTING"]:
+        if not current_app.config["TESTING"]:
             if not self._verify_request():
                 logger.debug("invalid request signature")
                 return "Bad request signature", 401
@@ -77,7 +79,7 @@ class Interactions(BaseExtension):
         # Handle interactions
         interaction = Interaction(**request.json)
 
-        resp = self._handle_interaction(interaction)
+        resp = await self._handle_interaction(interaction)
 
         if resp is None:
             return "Unknown interaction type", 501
@@ -94,13 +96,15 @@ class Interactions(BaseExtension):
         except AttributeError:
             return response
 
-        if interaction is None or self._app.config["TESTING"]:
+        if interaction is None or current_app.config["TESTING"]:
             return response
 
         target, ctx = self._get_after_request_data(interaction, interaction_response)
 
         if target and target.after_callback is not None:
-            t = Thread(target=target.after_callback, args=(ctx,))
+            t = Thread(
+                target=current_app.ensure_sync(target.after_callback), args=(ctx,)
+            )
             t.start()
 
         return response
