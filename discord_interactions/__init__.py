@@ -20,6 +20,7 @@ from .interaction_response import (
 
 from .application_command import (
     ApplicationCommand,
+    ApplicationCommandType,
     ApplicationCommandOption,
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
@@ -32,6 +33,8 @@ from .message_component import (
     ActionRow,
     Button,
     LinkButton,
+    SelectOption,
+    SelectMenu,
 )
 
 from .permissions import GuildPermissions, Permissions, PermissionType

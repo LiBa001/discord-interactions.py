@@ -29,6 +29,12 @@ from enum import Enum
 from typing import Union, List
 
 
+class ApplicationCommandType(Enum):
+    CHAT_INPUT = 1
+    USER = 2
+    MESSAGE = 3
+
+
 class ApplicationCommandOptionType(Enum):
     SUB_COMMAND = 1
     SUB_COMMAND_GROUP = 2
@@ -91,18 +97,23 @@ class ApplicationCommandOption:
 class ApplicationCommand:
     def __init__(
         self,
-        name,
-        description,
+        name: str,
+        description: str,
+        cmd_type: ApplicationCommandType = ApplicationCommandType.CHAT_INPUT,
         options: List[ApplicationCommandOption] = None,
         default_permission: bool = True,
         **kwargs
     ):
         self.id = int(kwargs.get("id", 0)) or None
+        self.type = cmd_type
         self.application_id = int(kwargs.get("application_id", 0)) or None
         self.name = name
         self.description = description
-        self.options = options
         self.default_permission = default_permission
+        self.version = int(kwargs.get("version", 0)) or None
+
+        # type CHAT_INPUT only
+        self.options = options
 
     def add_option(self, option: ApplicationCommandOption):
         if self.options is None:

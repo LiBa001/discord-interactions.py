@@ -30,7 +30,7 @@ echo_cmd.add_option(
 rps_cmd = ApplicationCommand(
     "rps",
     "Play Rock, Paper, Scissors!",
-    [
+    options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name="symbol",
@@ -48,7 +48,7 @@ rps_cmd = ApplicationCommand(
 guess_cmd = ApplicationCommand(
     "guess",
     "Guess my number!",
-    [
+    options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.INTEGER,
             name="number",
@@ -71,7 +71,7 @@ guess_cmd = ApplicationCommand(
 hug_cmd = ApplicationCommand(
     "hug",
     "Hug someone nice",
-    [
+    options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.USER,
             name="cutie",
@@ -84,7 +84,7 @@ hug_cmd = ApplicationCommand(
 generate_cmd = ApplicationCommand(
     "generate",
     "Generate different things",
-    [
+    options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.SUB_COMMAND,
             name="sha1",

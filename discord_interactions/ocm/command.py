@@ -33,6 +33,7 @@ from discord_interactions import (
     ApplicationCommandInteractionDataOption,
     ApplicationCommandInteractionDataResolved,
     ApplicationCommand,
+    ApplicationCommandType,
     ApplicationCommandOption,
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
@@ -220,8 +221,20 @@ class Command(OptionContainer, metaclass=CommandType):
 
     __cmd_name__ = None
     __cmd_description__ = None
+    __cmd_type__ = ApplicationCommandType.CHAT_INPUT
+    __cmd_default_permission__ = True
 
     __interaction: Interaction = None
+
+    def __init_subclass__(cls, **kwargs):
+        if name := kwargs.get("name"):
+            cls.__cmd_name__ = name
+        if description := kwargs.get("description"):
+            cls.__cmd_description__ = description
+        if default_permission := kwargs.get("default_permission"):
+            cls.__cmd_default_permission__ = default_permission
+        if cmd_type := kwargs.get("type"):
+            cls.__cmd_type__ = cmd_type
 
     @classmethod
     def wrap(cls, interaction: Interaction):
@@ -273,7 +286,9 @@ class Command(OptionContainer, metaclass=CommandType):
         return ApplicationCommand(
             name=cls.__cmd_name__,
             description=cls.__cmd_description__,
+            cmd_type=cls.__cmd_type__,
             options=options or None,
+            default_permission=cls.__cmd_default_permission__,
         )
 
 
