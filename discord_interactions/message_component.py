@@ -102,7 +102,7 @@ class Component:
                 data["custom_id"] = self.custom_id
         elif self.type == ComponentType.SelectMenu:
             data["custom_id"] = self.custom_id
-            data["options"] = self.options
+            data["options"] = [o.to_dict() for o in self.options]
 
         if self.emoji:
             data["emoji"] = PartialEmoji.from_any(self.emoji).to_dict()
