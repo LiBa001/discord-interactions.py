@@ -25,7 +25,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass
@@ -381,3 +381,13 @@ class PartialEmoji:
 
     def to_dict(self) -> dict:
         return {"id": self.id, "name": self.name, "animated": self.animated}
+
+    @classmethod
+    def from_any(cls, emoji: Union[str, "PartialEmoji"]) -> "PartialEmoji":
+        """Convert values of any type into a partial emoji dict."""
+        if isinstance(emoji, str):
+            return cls(name=emoji)
+        elif isinstance(emoji, cls):
+            return emoji
+        else:
+            raise TypeError(f"cannot convert '{type(emoji)}' to partial emoji dict")

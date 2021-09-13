@@ -32,6 +32,7 @@ from .models import PartialEmoji
 class ComponentType(Enum):
     ActionRow = 1  # A container for other components
     Button = 2  # A clickable button
+    SelectMenu = 3  # A select menu for picking from choices
 
 
 class ButtonStyle(Enum):
@@ -43,28 +44,55 @@ class ButtonStyle(Enum):
 
 
 @dataclass()
+class SelectOption:
+    label: str
+    value: str
+    description: Optional[str] = None
+    emoji: Optional[PartialEmoji] = None
+    default: Optional[bool] = None
+
+    def to_dict(self):
+        data = {"label": self.label, "value": self.value}
+
+        if self.description:
+            data["description"] = self.description
+        if self.emoji:
+            data["emoji"] = PartialEmoji.from_any(self.emoji).to_dict()
+        if self.default is not None:
+            data["default"] = self.default
+
+
+@dataclass()
 class Component:
     """Interactive component on a message object."""
 
     type: ComponentType
 
-    # valid for action rows
+    # valid for action rows only
     components: Optional[List["Component"]] = None
 
-    # valid for buttons
+    # valid for buttons and select menus
+    custom_id: Optional[str] = None
+    disabled: Optional[bool] = None
+
+    # valid for buttons only
     style: Optional[ButtonStyle] = None
     label: Optional[str] = None
     emoji: Union[PartialEmoji, str, None] = None
-    custom_id: Optional[str] = None
     url: Optional[str] = None
-    disabled: Optional[bool] = None
+
+    # valid for select menus only
+    options: Optional[List[SelectOption]] = None
+    placeholder: Optional[str] = None
+    min_values: Optional[int] = None
+    max_values: Optional[int] = None
 
     def to_dict(self):
         data = {"type": self.type.value}
 
         if self.components is not None:
             data["components"] = [c.to_dict() for c in self.components]
-        else:
+        elif self.type == ComponentType.Button:
             data["style"] = self.style.value
             data["label"] = self.label
 
@@ -72,11 +100,12 @@ class Component:
                 data["url"] = self.url
             else:
                 data["custom_id"] = self.custom_id
+        elif self.type == ComponentType.SelectMenu:
+            data["custom_id"] = self.custom_id
+            data["options"] = self.options
 
-        if isinstance(self.emoji, str):
-            data["emoji"] = PartialEmoji(name=self.emoji).to_dict()
-        if isinstance(self.emoji, PartialEmoji):
-            data["emoji"] = self.emoji.to_dict()
+        if self.emoji:
+            data["emoji"] = PartialEmoji.from_any(self.emoji).to_dict()
         if self.disabled is not None:
             data["disabled"] = self.disabled
 
@@ -130,3 +159,37 @@ class LinkButton(Component):
             emoji=emoji,
             disabled=disabled,
         )
+
+
+class SelectMenu(Component):
+    """A select menu component."""
+
+    def __init__(
+        self,
+        custom_id: str,
+        options: List[SelectOption],
+        placeholder: Optional[str] = None,
+        min_values: int = 0,
+        max_values: int = 25,
+        disabled: bool = False,
+    ):
+        super().__init__(
+            type=ComponentType.SelectMenu,
+            custom_id=custom_id,
+            options=options,
+            placeholder=placeholder,
+            min_values=min_values,
+            max_values=max_values,
+            disabled=disabled,
+        )
+
+    def add_option(
+        self,
+        label: str,
+        value: str,
+        description: str = "",
+        emoji: Optional[PartialEmoji] = None,
+        default: bool = False,
+    ):
+        self.options.append(SelectOption(label, value, description, emoji, default))
+        return self
