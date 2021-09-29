@@ -4,7 +4,12 @@ from typing import Tuple, TypeVar
 
 from examples import flask_webhook, flask_webhook_ocm, flask_webhook_components
 
-from discord_interactions import InteractionType, InteractionCallbackType, ComponentType
+from discord_interactions import (
+    InteractionType,
+    InteractionCallbackType,
+    ComponentType,
+    ApplicationCommandType,
+)
 
 DO_NOT_VALIDATE = TypeVar("DO_NOT_VALIDATE")
 
@@ -16,6 +21,7 @@ command_data = [
             "name": "ping",
             "resolved": {},
             "options": [],
+            "type": ApplicationCommandType.CHAT_INPUT.value,
         },
         {
             "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
@@ -30,6 +36,7 @@ command_data = [
             "options": [
                 {"name": "message", "type": 3, "value": "this is a test message"}
             ],
+            "type": ApplicationCommandType.CHAT_INPUT.value,
         },
         {
             "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
@@ -44,6 +51,7 @@ command_data = [
             "name": "rps",
             "resolved": {},
             "options": [{"name": "symbol", "type": 3, "value": "paper"}],
+            "type": ApplicationCommandType.CHAT_INPUT.value,
         },
         {
             "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
@@ -61,6 +69,7 @@ command_data = [
                 {"name": "number", "type": 4, "value": 42},
                 {"name": "max_num", "type": 4, "value": 69},
             ],
+            "type": ApplicationCommandType.CHAT_INPUT.value,
         },
         {
             "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
@@ -77,6 +86,7 @@ command_data = [
             "options": [
                 {"name": "number", "type": 4, "value": 7},
             ],
+            "type": ApplicationCommandType.CHAT_INPUT.value,
         },
         {
             "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
@@ -103,6 +113,7 @@ command_data = [
             "options": [
                 {"name": "cutie", "type": 6, "value": "123456789"},
             ],
+            "type": ApplicationCommandType.CHAT_INPUT.value,
         },
         {
             "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
@@ -123,11 +134,79 @@ command_data = [
                     "options": [{"name": "text", "type": 3, "value": "hello world"}],
                 },
             ],
+            "type": ApplicationCommandType.CHAT_INPUT.value,
         },
         {
             "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
             "data": {
                 "content": '"hello world"\n=> `2aae6c35c94fcfb415dbe95f408b9ce91ee846ed`',
+                "flags": 64,
+            },
+        },
+    ),
+    (
+        {
+            "id": "44444",
+            "name": "kick",
+            "resolved": {
+                "users": {
+                    "987654321": {
+                        "id": "987654321",
+                        "username": "test-user",
+                        "discriminator": "1234",
+                    },
+                },
+            },
+            "type": ApplicationCommandType.USER.value,
+            "target_id": "987654321",
+        },
+        {
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
+            "data": {
+                "content": "kicked test-user",
+                "flags": 64,
+            },
+        },
+    ),
+    (
+        {
+            "id": "44444",
+            "name": "delete",
+            "resolved": {
+                "messages": {
+                    "867793854505943041": {
+                        "attachments": [],
+                        "author": {
+                            "avatar": "a_f03401914fb4f3caa9037578ab980920",
+                            "discriminator": "6538",
+                            "id": "167348773423415296",
+                            "public_flags": 1,
+                            "username": "ian"
+                        },
+                        "channel_id": "772908445358620702",
+                        "components": [],
+                        "content": "some message",
+                        "edited_timestamp": None,
+                        "embeds": [],
+                        "flags": 0,
+                        "id": "867793854505943041",
+                        "mention_everyone": False,
+                        "mention_roles": [],
+                        "mentions": [],
+                        "pinned": False,
+                        "timestamp": "2021-07-22T15:42:57.744000+00:00",
+                        "tts": False,
+                        "type": 0
+                    }
+                },
+            },
+            "type": ApplicationCommandType.USER.value,
+            "target_id": "867793854505943041",
+        },
+        {
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
+            "data": {
+                "content": "deleted message || some message ||",
                 "flags": 64,
             },
         },

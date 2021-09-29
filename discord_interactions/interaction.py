@@ -28,7 +28,7 @@ import json
 from enum import Enum
 from .models import User, Member, Role, Channel, Message
 from .application_command import ApplicationCommandOptionType
-from .message_component import ComponentType
+from .message_component import ComponentType, SelectOption
 from typing import Union, Optional
 
 
@@ -47,6 +47,9 @@ class ApplicationCommandInteractionDataResolved:
         self.roles = {r_id: Role(**r) for r_id, r in kwargs.get("roles", {}).items()}
         self.channels = {
             c_id: Channel(**c) for c_id, c in kwargs.get("channels", {}).items()
+        }
+        self.messages = {
+            m_id: Message(**m) for m_id, m in kwargs.get("messages", {}).items()
         }
 
 
@@ -92,6 +95,7 @@ class ApplicationCommandInteractionData(_OptionGetter):
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
         self.name = kwargs["name"]
+        self.type = kwargs["type"]
         self.resolved = ApplicationCommandInteractionDataResolved(
             **kwargs.get("resolved", {})
         )
@@ -99,12 +103,15 @@ class ApplicationCommandInteractionData(_OptionGetter):
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
         ]
+        self.target_id = kwargs.get("target_id")  # user and message commands only
 
 
 class ComponentInteractionData:
     def __init__(self, **kwargs):
         self.custom_id = kwargs["custom_id"]
         self.component_type = ComponentType(kwargs["component_type"])
+        # for select components only
+        self.values = [SelectOption(**v) for v in kwargs.get("values", [])] or None
 
 
 INTERACTION_TYPE_MAP = {
@@ -161,6 +168,12 @@ class Interaction:
     def is_dm(self) -> bool:
         return self.member is None
 
+    @property
+    def target(self) -> Union[User, Message, None]:
+        """Target of user or message command."""
+
+        return self.find_any_resolved(self.data.target_id)
+
     def get_user(self, user_id: int) -> Optional[User]:
         return self.data.resolved.users.get(user_id)
 
@@ -172,3 +185,13 @@ class Interaction:
 
     def get_channel(self, channel_id: int) -> Optional[Channel]:
         return self.data.resolved.channels.get(channel_id)
+
+    def get_message(self, message_id: int) -> Optional[Message]:
+        return self.data.resolved.messages.get(message_id)
+
+    def find_any_resolved(
+        self, target_id: int
+    ) -> Union[User, Member, Role, Channel, Message, None]:
+        for target_type in "users", "members", "roles", "channels", "messages":
+            if target := getattr(self.data.resolved, target_type).get(target_id):
+                return target

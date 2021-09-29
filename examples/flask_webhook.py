@@ -2,6 +2,7 @@ from discord_interactions.ext.flask import Interactions
 from discord_interactions.ext import CommandContext, AfterCommandContext
 from discord_interactions import (
     ApplicationCommand,
+    ApplicationCommandType,
     ApplicationCommandOption,
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
@@ -99,6 +100,16 @@ generate_cmd = ApplicationCommand(
             ],
         )
     ],
+)
+
+kick_cmd = ApplicationCommand(
+    "kick",
+    cmd_type=ApplicationCommandType.USER,
+)
+
+delete_cmd = ApplicationCommand(
+    "delete",
+    cmd_type=ApplicationCommandType.MESSAGE,
 )
 
 
@@ -209,6 +220,20 @@ def _on_error_example_error(e: Exception):
         return "integer conversion failed"
     else:
         return "unknown error"
+
+
+@interactions.command(kick_cmd)
+def kick(ctx: CommandContext):
+    user = ctx.interaction.target
+    ...  # kick user
+    return f"kicked {user.username}", True
+
+
+@interactions.command(delete_cmd)
+def delete(ctx: CommandContext):
+    msg = ctx.interaction.target
+    ...  # delete message
+    return f"deleted message || {msg.content} ||", True
 
 
 if __name__ == "__main__":

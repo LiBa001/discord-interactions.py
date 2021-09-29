@@ -30,6 +30,7 @@ from discord_interactions import (
     User,
     Channel,
     Role,
+    Message,
     ApplicationCommandInteractionDataOption,
     ApplicationCommandInteractionDataResolved,
     ApplicationCommand,
@@ -38,7 +39,7 @@ from discord_interactions import (
     ApplicationCommandOptionType,
     ApplicationCommandOptionChoice,
 )
-from typing import List, Union, Type, Any
+from typing import List, Union, Type, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
 import inspect
@@ -200,7 +201,8 @@ class Option(_Option, metaclass=OptionContainerType):
 
 class CommandType(OptionContainerType):
     def __new__(mcs, *args, **kwargs):
-        cls = super(CommandType, mcs).__new__(mcs, *args, **kwargs)
+        cls = super(CommandType, mcs).__new__(mcs, *args)
+        cls.__init_subclass__(**kwargs)
 
         # abort if it's a class in this module
         # (the `Command` class itself and not a subclass)
@@ -226,14 +228,21 @@ class Command(OptionContainer, metaclass=CommandType):
 
     __interaction: Interaction = None
 
-    def __init_subclass__(cls, **kwargs):
-        if name := kwargs.get("name"):
+    def __init_subclass__(
+        cls,
+        name=None,
+        description=None,
+        default_permission=None,
+        cmd_type=None,
+        **kwargs,
+    ):
+        if name:
             cls.__cmd_name__ = name
-        if description := kwargs.get("description"):
+        if description:
             cls.__cmd_description__ = description
-        if default_permission := kwargs.get("default_permission"):
+        if default_permission:
             cls.__cmd_default_permission__ = default_permission
-        if cmd_type := kwargs.get("type"):
+        if cmd_type or (cmd_type := kwargs.get("type")):
             cls.__cmd_type__ = cmd_type
 
     @classmethod
@@ -273,6 +282,16 @@ class Command(OptionContainer, metaclass=CommandType):
     @property
     def token(self) -> str:
         return self.interaction.token
+
+    @property
+    def target_id(self) -> Optional[int]:
+        """ID of user or message targeted by user or message command."""
+
+        return self.interaction.data.target_id
+
+    @property
+    def target(self) -> Union[User, Message, None]:
+        return self.interaction.target
 
     @classmethod
     def to_application_command(cls) -> ApplicationCommand:

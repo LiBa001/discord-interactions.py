@@ -98,7 +98,7 @@ class ApplicationCommand:
     def __init__(
         self,
         name: str,
-        description: str,
+        description: str = None,
         cmd_type: ApplicationCommandType = ApplicationCommandType.CHAT_INPUT,
         options: List[ApplicationCommandOption] = None,
         default_permission: bool = True,
@@ -130,8 +130,10 @@ class ApplicationCommand:
         return cls(**data)
 
     def to_dict(self) -> dict:
-        data = {"name": self.name, "description": self.description}
+        data = {"name": self.name, "type": self.type.value}
 
+        if self.description:
+            data["description"] = self.description
         if self.id:
             data["id"] = self.id
             data["application_id"] = self.application_id

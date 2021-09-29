@@ -1,6 +1,6 @@
 from discord_interactions.ext.flask import Interactions
 from discord_interactions.ext import CommandContext
-from discord_interactions.ocm import Command, SubCommand, Option, OptionChoices
+from discord_interactions.ocm import Command, SubCommand, Option, OptionChoices, UserCommand, MessageCommand
 from discord_interactions import User
 from flask import Flask
 import os
@@ -57,6 +57,11 @@ class Generate(Command):
     """Generate different things"""
 
     sha1 = Sha1()
+
+
+# user and message commands
+Kick = UserCommand.create("kick")
+Delete = MessageCommand.create("delete")
 
 
 @interactions.command
@@ -130,6 +135,21 @@ def sha1(_: CommandContext, cmd: Sha1):
 @generate.fallback
 def generate_fallback(_: CommandContext):
     return "error: no subcommand provided", True
+
+
+# === user and message commands ===
+
+
+@interactions.command
+def kick(cmd: Kick):
+    ...  # kick user
+    return f"kicked {cmd.user.username}", True
+
+
+@interactions.command
+def delete(cmd: Delete):
+    ...  # delete message
+    return f"deleted message || {cmd.message.content} ||", True
 
 
 if __name__ == "__main__":
