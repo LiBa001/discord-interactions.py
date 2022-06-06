@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,11 +23,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-
+import typing
 from enum import Enum, Flag
-from typing import List, Protocol, Optional
+from typing import Protocol, TypeAlias
 from dataclasses import dataclass
 from .message_component import Component
+
+if typing.TYPE_CHECKING:
+    from .application_command import ApplicationCommandOptionChoice
+    from .models import Attachment
 
 
 class DictConvertible(Protocol):
@@ -47,6 +51,8 @@ class InteractionCallbackType(Enum):
     DEFERRED_CHANNEL_MESSAGE = 5
     DEFERRED_UPDATE_MESSAGE = 6
     UPDATE_MESSAGE = 7
+    AUTOCOMPLETE_RESULT = 8
+    MODAL = 9
 
 
 class ResponseFlags(Flag):
@@ -55,17 +61,18 @@ class ResponseFlags(Flag):
 
 
 @dataclass()
-class InteractionApplicationCommandCallbackData:
+class MessageCallbackData:
     """
     The data that is sent in an :class:`InteractionResponse`.
     """
 
     content: str = None
     tts: bool = False
-    embeds: List[DictConvertible] = None
+    embeds: list[DictConvertible] = None
     allowed_mentions: DictConvertible = None
     flags: ResponseFlags = ResponseFlags.NONE
-    components: List[Component] = None
+    components: list[Component] = None
+    attachments: list[Attachment] = None
 
     def to_dict(self) -> dict:
         data = {}
@@ -87,13 +94,40 @@ class InteractionApplicationCommandCallbackData:
 
 
 @dataclass()
+class AutocompleteCallbackData:
+    choices: list[ApplicationCommandOptionChoice]
+
+    def to_dict(self) -> dict:
+        return {"choices": [c.to_dict() for c in self.choices]}
+
+
+@dataclass()
+class ModalCallbackData:
+    custom_id: str
+    title: str
+    components: list[Component]
+
+    def to_dict(self) -> dict:
+        return {
+            "custom_id": self.custom_id,
+            "title": self.title,
+            "components": [c.to_dict() for c in self.components]
+        }
+
+
+InteractionCallbackData: TypeAlias = (
+        MessageCallbackData | AutocompleteCallbackData | ModalCallbackData
+)
+
+
+@dataclass()
 class InteractionResponse:
     """
     Represents a basic response to a received :class:`Interaction`.
     """
 
     type: InteractionCallbackType
-    data: InteractionApplicationCommandCallbackData = None
+    data: InteractionCallbackData = None
 
     def to_dict(self) -> dict:
         response = {"type": self.type.value}
@@ -104,9 +138,9 @@ class InteractionResponse:
         return response
 
 
-class Response(InteractionResponse):
+class MessageResponse(InteractionResponse):
     """
-    An utility class to create simplified interaction responses to application commands.
+    A helper class to create simplified message responses to interactions.
     Useful for responding with an embed.
 
     Creates an :class:`InteractionResponse` of type
@@ -119,15 +153,15 @@ class Response(InteractionResponse):
     :param embed: The response message embed
 
     :type ephemeral: bool
-    :param ephemeral: Whether or not the response should be ephemeral (default: `False`)
+    :param ephemeral: Whether the response should be ephemeral (default: `False`)
     """
 
     _TYPE = InteractionCallbackType.CHANNEL_MESSAGE
 
     def __init__(
         self,
-        content: Optional[str] = None,
-        embed: Optional[DictConvertible] = None,
+        content: str = None,
+        embed: DictConvertible = None,
         ephemeral: bool = False,
         **kwargs
     ):
@@ -137,14 +171,34 @@ class Response(InteractionResponse):
 
         super().__init__(
             type=self._TYPE,
-            data=InteractionApplicationCommandCallbackData(
+            data=MessageCallbackData(
                 content=content, embeds=[embed] if embed else [], **kwargs
             ),
         )
 
 
-class ComponentResponse(Response):
+class MessageUpdateResponse(MessageResponse):
     _TYPE = InteractionCallbackType.UPDATE_MESSAGE
+
+
+class ModalResponse(InteractionResponse):
+    """
+    A helper class to create simplified modal responses to interactions.
+
+    Creates an :class:`InteractionResponse` of type
+    `InteractionResponseType.MODAL` internally.
+    """
+
+    _TYPE = InteractionCallbackType.MODAL
+
+    def __init__(self, custom_id: str, title: str, components: list[Component] = None):
+        super().__init__(
+            type=self._TYPE,
+            data=ModalCallbackData(custom_id, title, components or [])
+        )
+
+    def add_component(self, component: Component):
+        self.data.components.append(component)
 
 
 @dataclass()
@@ -157,7 +211,7 @@ class FollowupMessage:
     username: str = None
     avatar_url: str = None
     tts: bool = False
-    embeds: List[DictConvertible] = None
+    embeds: list[DictConvertible] = None
     allowed_mentions: DictConvertible = None
 
     def to_dict(self) -> dict:

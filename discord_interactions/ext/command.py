@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,28 +24,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import Callable, Union, Tuple, Optional, Any, Type, Dict, Awaitable
+from __future__ import annotations
 
-from .. import Interaction, InteractionResponse, ApplicationCommand, ocm
+from typing import Callable, Any, Awaitable, TypeAlias, Union, Annotated
+from types import FunctionType
+
+from .. import InteractionResponse, ApplicationCommand
 from .context import CommandContext, AfterCommandContext
 
 
-_CommandCallbackReturnTypeResolved = Union[
-    InteractionResponse, str, None, Tuple[Optional[str], bool]
+_CommandCallbackReturnTypeResolved: TypeAlias = Union[
+    InteractionResponse | str | tuple[str | None, bool] | None
 ]
-_CommandCallbackReturnType = Union[
+_CommandCallbackReturnType: TypeAlias = Union[
     Awaitable[_CommandCallbackReturnTypeResolved], _CommandCallbackReturnTypeResolved
 ]
-_CommandCallback = Union[
-    Callable[[], _CommandCallbackReturnType],
-    Callable[
-        [Union[Interaction, ocm.Command, ocm.Option, CommandContext]],
-        _CommandCallbackReturnType,
+_CommandCallback: TypeAlias = Annotated[
+    Union[
+        Callable[[], _CommandCallbackReturnType],
+        Callable[[CommandContext], _CommandCallbackReturnType],
+        Callable[[CommandContext, Any], _CommandCallbackReturnType],
     ],
-    Callable[[CommandContext, Any], _CommandCallbackReturnType],
+    FunctionType
 ]
-_AfterCommandCallback = Callable[[AfterCommandContext], None]
-_DecoratedCommand = Union[ApplicationCommand, str, _CommandCallback, Type[ocm.Command]]
+_AfterCommandCallback: TypeAlias = Callable[[AfterCommandContext], None]
+_DecoratedCommand: TypeAlias = ApplicationCommand | str | _CommandCallback
 
 
 class SubCommandData:
@@ -67,10 +70,10 @@ class SubCommandData:
         self.after_callback = None
         self.fallback_callback = None
         self.error_callback = None
-        self._subcommands: Dict[str, SubCommandData] = {}
+        self._subcommands: dict[str, SubCommandData] = {}
 
     @property
-    def subcommands(self) -> Dict[str, "SubCommandData"]:
+    def subcommands(self) -> dict[str, "SubCommandData"]:
         return self._subcommands
 
     def after_command(self, f: _AfterCommandCallback):
@@ -172,9 +175,9 @@ class CommandData(SubCommandData):
     @classmethod
     def create_from(
         cls,
-        cmd: Union[ApplicationCommand, Type[ocm.Command], str],
+        cmd: ApplicationCommand | str,
         callback: _CommandCallback,
-    ) -> "CommandData":
+    ) -> CommandData:
         """
         Create an instance of :class:`CommandData`.
 
@@ -187,13 +190,8 @@ class CommandData(SubCommandData):
             cmd = cls(cmd, callback)
         elif isinstance(cmd, ApplicationCommand):
             cmd = cls(cmd.name, callback, cmd)
-        elif issubclass(cmd, ocm.Command):
-            cmd = cls(cmd.__cmd_name__, callback, cmd.to_application_command())
         else:
-            raise TypeError(
-                "'command' must be 'str', 'ApplicationCommand'"
-                + "or subclass of 'ocm.Command'"
-            )
+            raise TypeError("'command' must be 'str' or 'ApplicationCommand'")
 
         return cmd
 
@@ -208,18 +206,15 @@ def command(
     """
 
     _f = None
-    if isinstance(cmd, Callable) and not isinstance(cmd, type(ocm.Command)):
+    if isinstance(cmd, FunctionType):
         _f = cmd
         cmd = None
 
     def decorator(f: _CommandCallback) -> CommandData:
         if cmd is not None:
             return CommandData.create_from(cmd, f)
-        elif len(annotations := f.__annotations__.values()) == 1:
-            _command = next(iter(annotations))  # get 'ocm.Command' from annotation
-            if issubclass(_command, ocm.Command):
-                return CommandData.create_from(_command, f)
-
-        return CommandData.create_from(f.__name__.lower().strip("_"), f)
+        else:
+            # use function name as command name
+            return CommandData.create_from(f.__name__.lower().strip("_"), f)
 
     return decorator(_f) if _f is not None else decorator

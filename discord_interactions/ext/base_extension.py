@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 This file contains (partly modified) contents of https://github.com/Rapptz/discord.py.
 Respective Copyright (c) 2015-2020 Rapptz
@@ -34,12 +34,12 @@ from discord_interactions import (
     InteractionResponse,
     ResponseFlags,
     InteractionCallbackType,
-    InteractionApplicationCommandCallbackData,
+    MessageCallbackData,
     ApplicationCommand,
     ApplicationClient,
 )
-from discord_interactions import ocm
-from typing import Callable, Union, Dict, List, Tuple, Optional, Coroutine
+from typing import Callable, Coroutine, get_type_hints, cast
+from types import FunctionType
 import logging
 import importlib
 import sys
@@ -50,8 +50,10 @@ import inspect
 from .context import (
     AfterCommandContext,
     CommandContext,
+    ElementContext,
     AfterComponentContext,
     ComponentContext,
+    ModalContext,
 )
 from .command import (
     SubCommandData,
@@ -61,7 +63,7 @@ from .command import (
     _CommandCallback,
     command as command_decorator,
 )
-from .component import ComponentData, _ComponentCallback
+from .element import ElementData, ElementType, _ElementCallback
 from . import errors
 
 
@@ -77,15 +79,16 @@ class BaseExtension(ABC):
         self._public_key = public_key
         self._app_id = app_id
 
-        self._commands: Dict[str, CommandData] = {}
-        self._components: Dict[str, ComponentData] = {}
+        self._commands: dict[str, CommandData] = {}
+        self._components: dict[str, ElementData] = {}
+        self._modals: dict[str, ElementData] = {}
 
         self.__extensions = {}
 
         self._error_callback = None
 
     @property
-    def commands(self) -> List[ApplicationCommand]:
+    def commands(self) -> list[ApplicationCommand]:
         """All registered application commands"""
 
         return [
@@ -116,173 +119,10 @@ class BaseExtension(ABC):
 
         client.bulk_overwrite_commands(self.commands, guild=guild)
 
-    async def _handle_interaction(
-        self, interaction: Interaction
-    ) -> Optional[InteractionResponse]:
-        if interaction.type == InteractionType.PING:
-            # handle a ping
-            logger.debug("incoming ping interaction")
-            return InteractionResponse(InteractionCallbackType.PONG)
-        elif interaction.type == InteractionType.APPLICATION_COMMAND:
-            # handle an application command (slash command)
-            logger.debug("incoming application command interaction")
-            cmd_name = interaction.data.name
-            cmd_data = self._commands[cmd_name]
-            cb = cmd_data.callback
-            ctx = CommandContext(self, interaction)
-            cmd: Optional[ocm.Command] = None
-
-            if cb.__code__.co_argcount > 1:
-                # the cb takes more than one argument; pass them
-                args, kwargs = self._get_cb_args_kwargs(cb, interaction.data.options)
-                args = (ctx, *args)
-            elif cb.__code__.co_argcount == 1:
-                # callback takes only one argument; figure out it's type
-                cb_data = interaction
-                if len(annotations := cb.__annotations__.values()) > 0:
-                    cmd_type = next(iter(annotations))
-                    if issubclass(cmd_type, ocm.Command):
-                        cb_data = cmd = cmd_type.wrap(interaction)
-                    elif issubclass(cmd_type, CommandContext):
-                        cb_data = ctx = cmd_type(self, interaction)
-
-                args, kwargs = (cb_data,), {}
-            else:
-                args, kwargs = (), {}
-
-            try:
-                resp = cb(*args, **kwargs)
-                if inspect.iscoroutinefunction(cb):
-                    resp = await resp
-            except Exception as e:
-                if cmd_data.error_callback:
-                    resp = cmd_data.error_callback(e)
-                elif self._error_callback:
-                    resp = self._error_callback(e)
-                else:
-                    raise e
-
-            # figure out whether to call subcommands
-            if resp is None and len(interaction.data.options) == 1:
-                option = interaction.data.options[0]
-                if option.is_sub_command:
-                    sub_cmd_data = cmd_data.subcommands.get(option.name)
-                    if sub_cmd_data is None:
-                        # no callback registered for subcommand; try fallback
-                        if cmd_data.fallback_callback is not None:
-                            resp = cmd_data.fallback_callback(ctx)
-                    else:
-                        ocm_sub = None
-                        if cmd is not None:
-                            ocm_sub = cmd.get_options()[option.name]
-                        try:
-                            resp = await self._handle_subcommand(
-                                ctx, option, sub_cmd_data, ocm_sub
-                            )
-                        except Exception as e:
-                            if cmd_data.error_callback:
-                                resp = cmd_data.error_callback(e)
-                            elif self._error_callback:
-                                resp = self._error_callback(e)
-                            else:
-                                raise e
-
-            if isinstance(resp, Coroutine):
-                resp = await resp
-
-            # build the actual interaction response
-            if isinstance(resp, InteractionResponse):
-                # response is already provided
-                interaction_response = resp
-            else:
-                # figure out what the response should look like
-                ephemeral = False
-
-                if isinstance(resp, tuple):
-                    resp, ephemeral = resp
-
-                if resp is None:
-                    r_type = InteractionCallbackType.DEFERRED_CHANNEL_MESSAGE
-                    r_data = None
-                    if ephemeral:
-                        r_data = InteractionApplicationCommandCallbackData(
-                            flags=ResponseFlags.EPHEMERAL
-                        )
-                else:
-                    r_type = InteractionCallbackType.CHANNEL_MESSAGE
-                    r_data = InteractionApplicationCommandCallbackData(str(resp))
-                    if ephemeral:
-                        r_data.flags = ResponseFlags.EPHEMERAL
-
-                interaction_response = InteractionResponse(
-                    type=r_type,
-                    data=r_data,
-                )
-
-            return interaction_response
-
-        elif interaction.type == InteractionType.MESSAGE_COMPONENT:
-            # a message component has been interacted with (e.g. button clicked)
-            logger.debug("incoming message component interaction")
-            ctx = ComponentContext(self, interaction)
-            prefix, *custom_args = ctx.custom_id.split(":")
-            component_data = self._components[prefix]
-
-            cb = component_data.callback
-            arg_count = cb.__code__.co_argcount
-
-            if arg_count == 0:
-                args = ()
-            else:
-                if ctx_class := cb.__annotations__.get(cb.__code__.co_varnames[0]):
-                    ctx = ctx_class(self, interaction)
-                if arg_count == 1:
-                    args = (ctx,)
-                else:
-                    annotations = cb.__annotations__
-                    zipped_args = zip(cb.__code__.co_varnames[1:arg_count], custom_args)
-                    # convert args to annotated types
-                    custom_args = [
-                        annotations.get(name, str)(value) for name, value in zipped_args
-                    ]
-                    args = (ctx, *custom_args)
-
-            try:
-                resp = cb(*args)  # call the callback
-            except Exception as e:
-                if component_data.error_callback:
-                    resp = component_data.error_callback(e)
-                elif self._error_callback:
-                    resp = self._error_callback(e)
-                else:
-                    raise e
-
-            if isinstance(resp, InteractionResponse):
-                interaction_response = resp
-            elif resp is None:
-                interaction_response = InteractionResponse(
-                    InteractionCallbackType.DEFERRED_UPDATE_MESSAGE
-                )
-            else:
-                r_data = InteractionApplicationCommandCallbackData(content=resp)
-
-                interaction_response = InteractionResponse(
-                    InteractionCallbackType.UPDATE_MESSAGE, r_data
-                )
-
-            return interaction_response
-
-        else:
-            return None
-
-    @abstractmethod
-    def _main(self, *args, **kwargs):
-        resp = self._handle_interaction(...)
-
     @staticmethod
     def _get_cb_args_kwargs(
-        cb, options: List[ApplicationCommandInteractionDataOption]
-    ) -> Tuple[list, dict]:
+            cb: FunctionType, options: list[ApplicationCommandInteractionDataOption]
+    ) -> tuple[list, dict]:
         # count difference between command options and callback args (without ctx)
         arg_diff = cb.__code__.co_argcount - (len(options) + 1)
         # number of callback keyword args
@@ -295,9 +135,9 @@ class BaseExtension(ABC):
             cb_args = options
             cb_kwargs = []
 
-        annotations = cb.__annotations__
+        annotations = get_type_hints(cb)
 
-        zipped_args = zip(cb.__code__.co_varnames[1 : len(cb_args) + 1], cb_args)
+        zipped_args = zip(cb.__code__.co_varnames[1:len(cb_args) + 1], cb_args)
 
         def convert(name, value):
             return t(value) if (t := annotations.get(name)) else value
@@ -308,86 +148,59 @@ class BaseExtension(ABC):
 
     @classmethod
     async def _handle_subcommand(
-        cls,
-        ctx: CommandContext,
-        interaction_sub: ApplicationCommandInteractionDataOption,
-        data: SubCommandData,
-        ocm_sub: Optional[ocm.Option] = None,
+            cls,
+            ctx: CommandContext,
+            subcmd: ApplicationCommandInteractionDataOption,
+            data: SubCommandData,
     ) -> _CommandCallbackReturnType:
         """Handle calling registered callbacks corresponding to invoked subcommands"""
 
-        cb = data.callback
+        cb = cast(FunctionType, data.callback)
         arg_count = cb.__code__.co_argcount
 
         logger.debug(f"handling subcommand {data.name}")
-
-        cb_data = None
-        pass_option_as_arg = False
-        if len(annotations := cb.__annotations__) > 0 and arg_count <= 2:
-            cb_data_arg_name = cb.__code__.co_varnames[arg_count - 1]
-            cmd_type = annotations.get(cb_data_arg_name)
-            if issubclass(cmd_type, ocm.Option):
-                if ocm_sub is None:
-                    ocm_sub = cmd_type(name=interaction_sub.name)
-                    ocm_sub._Option__data = interaction_sub
-                cb_data = ocm_sub
-            elif issubclass(cmd_type, CommandContext):
-                cb_data = ctx
-            elif issubclass(cmd_type, ApplicationCommandInteractionDataOption):
-                cb_data = cmd_type(
-                    name=interaction_sub.name,
-                    type=interaction_sub.type,
-                    value=interaction_sub.value,
-                )
-                cb_data.options = interaction_sub.options
-            elif cmd_type is not None and arg_count == 2:
-                # pass cmd option as individual argument when it has an annotation;
-                # else it will default to 'ApplicationCommandInteractionDataOption'
-                pass_option_as_arg = True
-        elif arg_count == 2:
-            cb_data = interaction_sub
 
         kwargs = {}
         if arg_count == 0:
             args = ()
         elif arg_count == 1:
-            # for one arg pass ctx by default, only something else if annotated
-            args = cb_data or ctx
-        elif pass_option_as_arg or arg_count > 2:
-            args, kwargs = cls._get_cb_args_kwargs(cb, interaction_sub.options)
-            args = (ctx, *args)
+            args = (ctx,)
         else:
-            args = (ctx, cb_data)
+            args, kwargs = cls._get_cb_args_kwargs(cb, subcmd.options)
+            args = (ctx, *args)
 
         try:
             resp = cb(*args, **kwargs)
+            if inspect.iscoroutinefunction(cb):
+                resp = await resp
         except Exception as e:
             if data.error_callback:
                 resp = data.error_callback(e)
             else:
                 raise e
 
-        if resp is None and len(interaction_sub.options) == 1:
-            option = interaction_sub.options[0]
+        # check for nested subcommand
+        if resp is None and len(subcmd.options) == 1:
+            option = subcmd.options[0]
             if option.is_sub_command:
+                # nested subcommand is being called -> figure out how to handle it
                 sub_cmd_data = data.subcommands.get(option.name)
                 if sub_cmd_data is None:
-                    # try to call fallback if subcommand callback is not registered
+                    # nested subcommand is not registered -> try to call fallback
                     if data.fallback_callback is not None:
                         try:
                             resp = data.fallback_callback(ctx)
+                            if inspect.iscoroutinefunction(data.fallback_callback):
+                                resp = await resp
                         except Exception as e:
                             if data.error_callback:
                                 resp = data.error_callback(e)
                             else:
                                 raise e
                 else:
-                    if ocm_sub is not None:
-                        ocm_sub = ocm_sub.get_options()[option.name]
+                    # nested subcommand is registered -> handle it regularly
                     try:
-                        resp = cls._handle_subcommand(
-                            ctx, option, sub_cmd_data, ocm_sub
-                        )
+                        resp = await cls._handle_subcommand(ctx, option, sub_cmd_data)
                     except Exception as e:
                         if sub_cmd_data.error_callback:
                             resp = sub_cmd_data.error_callback(e)
@@ -396,11 +209,190 @@ class BaseExtension(ABC):
                         else:
                             raise e
 
+        if isinstance(resp, Coroutine):
+            resp = await resp
+
         return resp
+
+    @staticmethod
+    def _build_channel_message(resp) -> InteractionResponse:
+        # build the actual interaction response
+        if isinstance(resp, InteractionResponse):
+            # response is already provided
+            return resp
+
+        # figure out what the response should look like
+        ephemeral = False
+
+        if isinstance(resp, tuple):
+            resp, ephemeral = resp
+
+        if resp is None:
+            r_type = InteractionCallbackType.DEFERRED_CHANNEL_MESSAGE
+            r_data = None
+            if ephemeral:
+                r_data = MessageCallbackData(
+                    flags=ResponseFlags.EPHEMERAL
+                )
+        else:
+            r_type = InteractionCallbackType.CHANNEL_MESSAGE
+            r_data = MessageCallbackData(str(resp))
+            if ephemeral:
+                r_data.flags = ResponseFlags.EPHEMERAL
+
+        return InteractionResponse(type=r_type, data=r_data)
+
+    async def _handle_application_command_interaction(self, interaction: Interaction) -> InteractionResponse | None:
+        # handle an application command (slash command)
+        logger.debug("incoming application command interaction")
+        cmd_name = interaction.data.name
+        cmd_data = self._commands[cmd_name]
+        cb = cast(FunctionType, cmd_data.callback)
+        ctx = CommandContext(self, interaction)
+
+        match cb.__code__.co_argcount:
+            case 0:
+                args, kwargs = (), {}
+            case 1:
+                args, kwargs = (ctx,), {}
+            case _:
+                args, kwargs = self._get_cb_args_kwargs(cb, interaction.data.options)
+                args = (ctx, *args)
+
+        try:
+            resp = cb(*args, **kwargs)
+            if inspect.iscoroutinefunction(cb):
+                resp = await resp
+        except Exception as e:
+            if cmd_data.error_callback:
+                resp = cmd_data.error_callback(ctx, e)
+            elif self._error_callback:
+                resp = self._error_callback(ctx, e)
+            else:
+                raise e
+
+        # figure out whether to call subcommands
+        if resp is None and len(interaction.data.options) == 1:
+            option = interaction.data.options[0]
+            if option.is_sub_command:
+                sub_cmd_data = cmd_data.subcommands.get(option.name)
+                if sub_cmd_data is None:
+                    # no callback registered for subcommand; try fallback
+                    if cmd_data.fallback_callback is not None:
+                        resp = cmd_data.fallback_callback(ctx)
+                else:
+                    try:
+                        resp = await self._handle_subcommand(ctx, option, sub_cmd_data)
+                    except Exception as e:
+                        if cmd_data.error_callback:
+                            resp = cmd_data.error_callback(ctx, e)
+                        elif self._error_callback:
+                            resp = self._error_callback(ctx, e)
+                        else:
+                            raise e
+
+        if isinstance(resp, Coroutine):
+            resp = await resp
+
+        return self._build_channel_message(resp)
+
+    async def _handle_ui_element_interaction(self, ctx: ElementContext, elements_data: dict):
+        prefix, *custom_args = ctx.custom_id.split(":")
+
+        component_data = elements_data[prefix]
+
+        cb = cast(FunctionType, component_data.callback)
+        arg_count = cb.__code__.co_argcount
+
+        match arg_count:
+            case 0:
+                args = ()
+            case 1:
+                args = (ctx,)
+            case _:
+                annotations = get_type_hints(cb)
+                zipped_args = zip(cb.__code__.co_varnames[1:arg_count], custom_args)
+                # convert (cast) args to annotated types
+                custom_args = [
+                    annotations.get(name, str)(value) for name, value in zipped_args
+                ]
+                args = (ctx, *custom_args)
+
+        try:
+            resp = cb(*args)  # call the callback
+            if inspect.iscoroutinefunction(cb):
+                resp = await resp
+        except Exception as e:
+            if component_data.error_callback:
+                resp = component_data.error_callback(e)
+            elif self._error_callback:
+                resp = self._error_callback(e)
+            else:
+                raise e
+
+        if isinstance(resp, Coroutine):
+            resp = await resp
+
+        return resp
+
+    async def _handle_message_component_interaction(self, interaction: Interaction) -> InteractionResponse | None:
+        # a message component has been interacted with (e.g. button clicked)
+        logger.debug("incoming message component interaction")
+        ctx = ComponentContext(self, interaction)
+
+        resp = await self._handle_ui_element_interaction(ctx, self._components)
+
+        if isinstance(resp, InteractionResponse):
+            interaction_response = resp
+        elif resp is None:
+            interaction_response = InteractionResponse(
+                InteractionCallbackType.DEFERRED_UPDATE_MESSAGE
+            )
+        else:
+            r_data = MessageCallbackData(content=resp)
+
+            interaction_response = InteractionResponse(
+                InteractionCallbackType.UPDATE_MESSAGE, r_data
+            )
+
+        return interaction_response
+
+    async def _handle_modal_interaction(self, interaction: Interaction) -> InteractionResponse | None:
+        # a modal has been submitted
+        logger.debug("incoming modal interaction")
+        ctx = ModalContext(self, interaction)
+
+        resp = await self._handle_ui_element_interaction(ctx, self._modals)
+
+        return self._build_channel_message(resp)
+
+    async def _handle_interaction(
+        self, interaction: Interaction
+    ) -> InteractionResponse | None:
+        match interaction.type:
+            case InteractionType.PING:
+                # handle a ping
+                logger.debug("incoming ping interaction")
+                return InteractionResponse(InteractionCallbackType.PONG)
+            case InteractionType.APPLICATION_COMMAND:
+                return await self._handle_application_command_interaction(interaction)
+            case InteractionType.MESSAGE_COMPONENT:
+                return await self._handle_message_component_interaction(interaction)
+            case InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE:
+                logger.error("autocomplete is not yet supported")  # TODO: implement
+                return None
+            case InteractionType.MODAL_SUBMIT:
+                return await self._handle_modal_interaction(interaction)
+            case _:
+                return None
+
+    @abstractmethod
+    def _main(self, *args, **kwargs):
+        resp = self._handle_interaction(...)
 
     def _get_after_request_data(
         self, interaction: Interaction, interaction_response: InteractionResponse
-    ) -> Tuple[Union[CommandData, ComponentData, None], Optional[CommandContext]]:
+    ) -> tuple[CommandData | ElementData | None, CommandContext | None]:
         if interaction.type == InteractionType.APPLICATION_COMMAND:
             target = self._commands[interaction.data.name]
             ctx = AfterCommandContext(self, interaction, interaction_response)
@@ -432,7 +424,7 @@ class BaseExtension(ABC):
 
     def command(
         self, command: _DecoratedCommand = None
-    ) -> Union[Callable[[_CommandCallback], CommandData], CommandData]:
+    ) -> Callable[[_CommandCallback], CommandData] | CommandData:
         """
         A decorator to register a slash command.
         Calls :meth:`register_command` internally.
@@ -441,7 +433,7 @@ class BaseExtension(ABC):
         """
 
         _f = None
-        if isinstance(command, Callable) and not isinstance(command, type(ocm.Command)):
+        if isinstance(command, FunctionType):
             _f = command
             command = None
 
@@ -452,30 +444,50 @@ class BaseExtension(ABC):
 
         return decorator(_f) if _f is not None else decorator
 
-    def register_component(self, component_data: ComponentData) -> ComponentData:
+    def register_element(self, element_data: ElementData) -> ElementData:
         """
-        Register data for a Discord Message Component.
+        Register data for a Discord UI element, such as a message component or a modal.
 
-        :param component_data:
-            An object containing all the component data (e.g. custom_id, callbacks)
-        :return: component data
+        :param element_data:
+            An object containing all the element data (e.g. custom_id, callbacks)
+        :return: element data
         """
 
-        self._components[component_data.custom_id] = component_data
-        return component_data
+        match element_data.element_type:
+            case ElementType.MESSAGE_COMPONENT:
+                self._components[element_data.custom_id] = element_data
+            case ElementType.MODAL:
+                self._modals[element_data.custom_id] = element_data
+
+        return element_data
 
     def component(
         self, component_id: str
-    ) -> Callable[[_ComponentCallback], ComponentData]:
+    ) -> Callable[[_ElementCallback], ElementData]:
         """
         A decorator to register a message component.
-        Calls :meth:`register_component` internally.
+        Calls :meth:`register_element` internally.
 
         :param component_id: The custom id specified when creating the component.
         """
 
-        def decorator(f: _ComponentCallback) -> ComponentData:
-            return self.register_component(ComponentData.create_from(component_id, f))
+        def decorator(f: _ElementCallback) -> ElementData:
+            return self.register_element(ElementData.create_from(ElementType.MESSAGE_COMPONENT, component_id, f))
+
+        return decorator
+
+    def modal(
+        self, modal_id: str
+    ) -> Callable[[_ElementCallback], ElementData]:
+        """
+        A decorator to register a modal.
+        Calls :meth:`register_element` internally.
+
+        :param modal_id: The custom id specified when creating the modal.
+        """
+
+        def decorator(f: _ElementCallback) -> ElementData:
+            return self.register_element(ElementData.create_from(ElementType.MODAL, modal_id, f))
 
         return decorator
 

@@ -8,6 +8,9 @@ from discord_interactions import (
     ApplicationCommandOptionChoice,
     Interaction,
     ApplicationCommandInteractionDataOption,
+    ModalResponse,
+    TextInput,
+    TextInputStyle,
 )
 from flask import Flask
 import os
@@ -101,6 +104,8 @@ generate_cmd = ApplicationCommand(
         )
     ],
 )
+
+modal_echo_cmd = ApplicationCommand("modal-echo", "what goes around comes around")
 
 kick_cmd = ApplicationCommand(
     "kick",
@@ -220,6 +225,18 @@ def _on_error_example_error(e: Exception):
         return "integer conversion failed"
     else:
         return "unknown error"
+
+
+@interactions.command(modal_echo_cmd)
+def modal_echo():
+    return ModalResponse("echo", "Whatcha gonna say?", [
+        TextInput("echo-text", TextInputStyle.Short, "Echo text", placeholder="Lenore?")
+    ])
+
+
+@interactions.modal("echo")
+def echo_modal_handler(ctx):
+    return ctx.get_input("echo-text").value
 
 
 @interactions.command(kick_cmd)

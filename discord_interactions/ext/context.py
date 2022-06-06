@@ -29,9 +29,10 @@ from typing import TYPE_CHECKING
 from discord_interactions import (
     InteractionClient,
     Interaction,
-    InteractionApplicationCommandCallbackData,
+    InteractionCallbackData,
     InteractionResponse,
     FollowupMessage,
+    Component
 )
 
 if TYPE_CHECKING:
@@ -79,7 +80,7 @@ class AfterCommandContext(CommandContext):
         return self._client
 
     def edit_original(self, content: str, **options):
-        data = InteractionApplicationCommandCallbackData(content, **options)
+        data = InteractionCallbackData(content, **options)
 
         self.client.edit_response(data)
 
@@ -89,14 +90,36 @@ class AfterCommandContext(CommandContext):
         self.client.create_message(followup_msg)
 
 
-class ComponentContext(CommandContext):
+class ElementContext(CommandContext):
+    @property
+    def custom_id(self):
+        return self._interaction.data.custom_id
+
+
+class ComponentContext(ElementContext):
     @property
     def message(self):
         return self._interaction.message
 
     @property
-    def custom_id(self):
-        return self._interaction.data.custom_id
+    def component_type(self):
+        return self._interaction.data.component_type
+
+    @property
+    def values(self) -> list | None:
+        """ Gets selected values if component is a select menu. """
+        return self._interaction.data.values
+
+
+class ModalContext(ElementContext):
+    @property
+    def components(self):
+        return self._interaction.data.components
+
+    def get_input(self, custom_id: str) -> Component:
+        for c in self.components:
+            if c.custom_id == custom_id:
+                return c
 
 
 class AfterComponentContext(AfterCommandContext, ComponentContext):

@@ -4,7 +4,7 @@
 MIT License
 
 Original work Copyright (c) 2015-2020 Rapptz
-Modified work Copyright (c) 2020-2021 Linus Bartsch
+Modified work Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,10 +25,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from typing import List, Optional, Union
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass
+
+from .message_component import Component
 
 
 class UserFlag(Enum):
@@ -109,11 +112,11 @@ class User:
         return f"<@{self.id}>"
 
     @staticmethod
-    def _parse_flags(flags: int) -> List[UserFlag]:
+    def _parse_flags(flags: int) -> list[UserFlag]:
         return [flag for flag in UserFlag if flags & flag.value != 0]
 
     @staticmethod
-    def _flags_to_int(flags: List[UserFlag]) -> int:
+    def _flags_to_int(flags: list[UserFlag]) -> int:
         return sum(map(lambda flag: flag.value, flags))
 
     def to_dict(self) -> dict:
@@ -176,15 +179,15 @@ class Member:
         return self.display_name or ""
 
     @property
-    def id(self) -> Optional[int]:
+    def id(self) -> int | None:
         return self.user.id if self.user else None
 
     @property
-    def username(self) -> Optional[str]:
+    def username(self) -> str | None:
         return self.user.username if self.user else None
 
     @property
-    def display_name(self) -> Optional[str]:
+    def display_name(self) -> str | None:
         return self.nick or self.username
 
     def to_dict(self) -> dict:
@@ -297,6 +300,30 @@ class Channel:
         self.member = data.get("member")
 
 
+@dataclass()
+class Attachment:
+    """
+    Represents a Discord attachment.
+
+    See https://discord.com/developers/docs/resources/channel#attachment-object
+    for reference.
+    """
+
+    id: int
+    filename: str
+    size: int
+    url: str
+    proxy_url: str
+    description: str = None
+    content_type: str = None
+    height: int = None
+    width: int = None
+    ephemeral: bool = False
+
+    def __post_init__(self):
+        self.id = int(self.id)
+
+
 class MessageType(Enum):
     """
     Represents the type of a Discord :class:`Message`.
@@ -355,7 +382,7 @@ class Message:
         self.mentions = [User(**u) for u in data["mentions"]]
         self.mention_roles = [int(r_id) for r_id in data["mention_roles"]]
         self.mention_channels = data.get("mention_channels")
-        self.attachments = data["attachments"]  # TODO: convert to Attachment object
+        self.attachments = [Attachment(**a) for a in data["attachments"]]
         self.embeds = data["embeds"]  # TODO: convert to Embed object
         self.reactions = data.get("reactions")
         self.nonce = data.get("nonce")
@@ -370,20 +397,20 @@ class Message:
         self.referenced_message = (m := data.get("reference_message")) and Message(**m)
         self.interaction = data.get("interaction")
         self.thread = (c := data.get("thread")) and Channel(**c)
-        self.components = data.get("components")  # TODO: convert to component object
+        self.components = [Component(**c) for c in data.get("components")]
 
 
 @dataclass
 class PartialEmoji:
-    id: Optional[int] = None
-    name: Optional[str] = None
+    id: int = None
+    name: str = None
     animated: bool = False
 
     def to_dict(self) -> dict:
         return {"id": self.id, "name": self.name, "animated": self.animated}
 
     @classmethod
-    def from_any(cls, emoji: Union[str, "PartialEmoji"]) -> "PartialEmoji":
+    def from_any(cls, emoji: str | PartialEmoji) -> PartialEmoji:
         """Convert values of any type into a partial emoji dict."""
         if isinstance(emoji, str):
             return cls(name=emoji)

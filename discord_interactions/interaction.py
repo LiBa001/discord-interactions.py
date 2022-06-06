@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,21 +24,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from __future__ import annotations
+
 import json
 from enum import Enum
-from .models import User, Member, Role, Channel, Message
-from .application_command import ApplicationCommandOptionType
-from .message_component import ComponentType, SelectOption
-from typing import Union, Optional
+from .models import User, Member, Role, Channel, Message, Attachment
+from .application_command import ApplicationCommandType, ApplicationCommandOptionType
+from .message_component import Component, ComponentType, SelectOption
+from typing import TypeAlias
 
 
 class InteractionType(Enum):
     PING = 1
     APPLICATION_COMMAND = 2
     MESSAGE_COMPONENT = 3
+    APPLICATION_COMMAND_AUTOCOMPLETE = 4
+    MODAL_SUBMIT = 5
 
 
 class ApplicationCommandInteractionDataResolved:
+    users: dict[int, User]
+    members: dict[int, Member]
+    roles: dict[int, Role]
+    channels: dict[int, Channel]
+    messages: dict[int, Message]
+    attachments: dict[int, Attachment]
+
     def __init__(self, **kwargs):
         self.users = {u_id: User(**u) for u_id, u in kwargs.get("users", {}).items()}
         self.members = {
@@ -51,6 +62,9 @@ class ApplicationCommandInteractionDataResolved:
         self.messages = {
             m_id: Message(**m) for m_id, m in kwargs.get("messages", {}).items()
         }
+        self.attachments = {
+            a_id: Attachment(**a) for a_id, a in kwargs.get("attachments", {}).items()
+        }
 
 
 class _OptionGetter:
@@ -58,7 +72,7 @@ class _OptionGetter:
 
     def get_option(
         self, option_name: str
-    ) -> Union["ApplicationCommandInteractionDataOption", None]:
+    ) -> ApplicationCommandInteractionDataOption | None:
         """Get option by name."""
 
         for option in self.options:
@@ -68,6 +82,12 @@ class _OptionGetter:
 
 
 class ApplicationCommandInteractionDataOption(_OptionGetter):
+    name: str
+    type: ApplicationCommandOptionType
+    value: str | int | float | None
+    options: list[ApplicationCommandInteractionDataOption]
+    focused: bool | None
+
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
         self.type = ApplicationCommandOptionType(kwargs["type"])
@@ -76,6 +96,7 @@ class ApplicationCommandInteractionDataOption(_OptionGetter):
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
         ]
+        self.focused = kwargs.get("focused")
 
     def __str__(self):
         return str(self.value)
@@ -92,10 +113,17 @@ class ApplicationCommandInteractionDataOption(_OptionGetter):
 
 
 class ApplicationCommandInteractionData(_OptionGetter):
+    id: int
+    name: str
+    type: ApplicationCommandType
+    resolved: ApplicationCommandInteractionDataResolved
+    options: list[ApplicationCommandInteractionDataOption]
+    target_id: int | None  # user and message commands only
+
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
         self.name = kwargs["name"]
-        self.type = kwargs["type"]
+        self.type = ApplicationCommandType(kwargs["type"])
         self.resolved = ApplicationCommandInteractionDataResolved(
             **kwargs.get("resolved", {})
         )
@@ -103,10 +131,14 @@ class ApplicationCommandInteractionData(_OptionGetter):
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
         ]
-        self.target_id = kwargs.get("target_id")  # user and message commands only
+        self.target_id = int(kwargs.get("target_id"), 0) or None
 
 
 class ComponentInteractionData:
+    custom_id: str
+    component_type: ComponentType
+    values: list[SelectOption] | None
+
     def __init__(self, **kwargs):
         self.custom_id = kwargs["custom_id"]
         self.component_type = ComponentType(kwargs["component_type"])
@@ -114,18 +146,47 @@ class ComponentInteractionData:
         self.values = [SelectOption(**v) for v in kwargs.get("values", [])] or None
 
 
+class ModalInteractionData:
+    custom_id: str
+    components: list[Component]
+
+    def __init__(self, **kwargs):
+        self.custom_id = kwargs["custom_id"]
+        self.components = [Component(c) for c in kwargs["components"]]
+
+
+InteractionData: TypeAlias = (
+    ApplicationCommandInteractionData | ComponentInteractionData | ModalInteractionData
+)
+
 INTERACTION_TYPE_MAP = {
     InteractionType.PING: type(None),
     InteractionType.APPLICATION_COMMAND: ApplicationCommandInteractionData,
     InteractionType.MESSAGE_COMPONENT: ComponentInteractionData,
+    InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE: ApplicationCommandInteractionData,
+    InteractionType.MODAL_SUBMIT: ModalInteractionData,
 }
 
 
 class Interaction:
     """
     This represents the base interaction type that gets invoked for Slash Commands
-    and future interaction types.
+    and other interaction types.
     """
+
+    id: int
+    application_id: int
+    type: InteractionType
+    data: InteractionData | None
+    guild_id: int | None
+    channel_id: int | None
+    member: Member | None
+    user: User | None
+    token: str
+    version: int
+    message: Message | None
+    locale: str | None
+    guild_locale: str | None
 
     def __init__(self, **kwargs):
         self.id = int(kwargs["id"])
@@ -143,9 +204,11 @@ class Interaction:
         self.token = kwargs["token"]
         self.version = int(kwargs["version"])
         self.message = (m := kwargs.get("message")) and Message(**m)
+        self.locale = kwargs["locale"]
+        self.guild_locale = kwargs.get("guild_locale")
 
     @classmethod
-    def from_json(cls, data: Union[dict, str]) -> "Interaction":
+    def from_json(cls, data: dict | str) -> Interaction:
         """
         Creates an instance of this class from the JSON data that is received on a
         Discord interaction.
@@ -161,7 +224,7 @@ class Interaction:
         return cls(**data)
 
     @property
-    def author(self) -> Union[Member, User]:
+    def author(self) -> Member | User:
         return self.member or self.user
 
     @property
@@ -169,29 +232,29 @@ class Interaction:
         return self.member is None
 
     @property
-    def target(self) -> Union[User, Message, None]:
+    def target(self) -> User | Message | None:
         """Target of user or message command."""
 
         return self.find_any_resolved(self.data.target_id)
 
-    def get_user(self, user_id: int) -> Optional[User]:
+    def get_user(self, user_id: int) -> User | None:
         return self.data.resolved.users.get(user_id)
 
-    def get_member(self, member_id: int) -> Optional[Member]:
+    def get_member(self, member_id: int) -> Member | None:
         return self.data.resolved.members.get(member_id)
 
-    def get_role(self, role_id: int) -> Optional[Role]:
+    def get_role(self, role_id: int) -> Role | None:
         return self.data.resolved.roles.get(role_id)
 
-    def get_channel(self, channel_id: int) -> Optional[Channel]:
+    def get_channel(self, channel_id: int) -> Channel | None:
         return self.data.resolved.channels.get(channel_id)
 
-    def get_message(self, message_id: int) -> Optional[Message]:
+    def get_message(self, message_id: int) -> Message | None:
         return self.data.resolved.messages.get(message_id)
 
     def find_any_resolved(
         self, target_id: int
-    ) -> Union[User, Member, Role, Channel, Message, None]:
+    ) -> User | Member | Role | Channel | Message | None:
         for target_type in "users", "members", "roles", "channels", "messages":
             if target := getattr(self.data.resolved, target_type).get(target_id):
                 return target

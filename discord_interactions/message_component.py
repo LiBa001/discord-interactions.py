@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,17 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional, List, Union
 from enum import Enum
 
 from .models import PartialEmoji
 
 
 class ComponentType(Enum):
-    ActionRow = 1  # A container for other components
-    Button = 2  # A clickable button
+    ActionRow = 1   # A container for other components
+    Button = 2      # A clickable button
     SelectMenu = 3  # A select menu for picking from choices
+    TextInput = 4   # A text input object
 
 
 class ButtonStyle(Enum):
@@ -43,13 +45,18 @@ class ButtonStyle(Enum):
     LINK = 5
 
 
+class TextInputStyle(Enum):
+    Short = 1
+    Paragraph = 2
+
+
 @dataclass()
 class SelectOption:
     label: str
     value: str
-    description: Optional[str] = None
-    emoji: Optional[PartialEmoji] = None
-    default: Optional[bool] = None
+    description: str = None
+    emoji: PartialEmoji = None
+    default: bool = None
 
     def to_dict(self):
         data = {"label": self.label, "value": self.value}
@@ -69,40 +76,74 @@ class Component:
     type: ComponentType
 
     # valid for action rows only
-    components: Optional[List["Component"]] = None
+    components: list[Component] = None
+
+    # valid for any component but action rows
+    custom_id: str = None
 
     # valid for buttons and select menus
-    custom_id: Optional[str] = None
-    disabled: Optional[bool] = None
+    disabled: bool = None
+
+    # valid for buttons and text input
+    style: ButtonStyle | TextInputStyle = None
+    label: str = None
 
     # valid for buttons only
-    style: Optional[ButtonStyle] = None
-    label: Optional[str] = None
-    emoji: Union[PartialEmoji, str, None] = None
-    url: Optional[str] = None
+    emoji: PartialEmoji | str = None
+    url: str = None
+
+    # valid for select menus and text input
+    placeholder: str = None
 
     # valid for select menus only
-    options: Optional[List[SelectOption]] = None
-    placeholder: Optional[str] = None
-    min_values: Optional[int] = None
-    max_values: Optional[int] = None
+    options: list[SelectOption] = None
+    min_values: int = None
+    max_values: int = None
+
+    # valid for text input only
+    min_length: int = None
+    max_length: int = None
+    required: bool = True
+    value: str = None
 
     def to_dict(self):
         data = {"type": self.type.value}
 
-        if self.components is not None:
-            data["components"] = [c.to_dict() for c in self.components]
-        elif self.type == ComponentType.Button:
-            data["style"] = self.style.value
-            data["label"] = self.label
+        match self.type:
+            case ComponentType.ActionRow:
+                data["components"] = [c.to_dict() for c in self.components]
+            case ComponentType.Button:
+                data["style"] = self.style.value
+                data["label"] = self.label
 
-            if self.url:
-                data["url"] = self.url
-            else:
+                if self.url:
+                    data["url"] = self.url
+                else:
+                    data["custom_id"] = self.custom_id
+            case ComponentType.SelectMenu:
                 data["custom_id"] = self.custom_id
-        elif self.type == ComponentType.SelectMenu:
-            data["custom_id"] = self.custom_id
-            data["options"] = [o.to_dict() for o in self.options]
+                data["options"] = [o.to_dict() for o in self.options]
+                if self.placeholder is not None:
+                    data["placeholder"] = self.placeholder
+                if self.min_values is not None:
+                    data["min_values"] = self.min_values
+                if self.max_values is not None:
+                    data["max_values"] = self.min_values
+            case ComponentType.TextInput:
+                data |= {
+                    "custom_id": self.custom_id,
+                    "style": self.style.value,
+                    "label": self.label,
+                    "required": self.required,
+                }
+                if self.min_length is not None:
+                    data["min_length"] = self.min_length
+                if self.max_length is not None:
+                    data["max_length"] = self.max_length
+                if self.value is not None:
+                    data["value"] = self.value
+                if self.placeholder is not None:
+                    data["placeholder"] = self.placeholder
 
         if self.emoji:
             data["emoji"] = PartialEmoji.from_any(self.emoji).to_dict()
@@ -127,7 +168,7 @@ class Button(Component):
         custom_id: str,
         style: ButtonStyle = ButtonStyle.PRIMARY,
         label: str = "",
-        emoji: Union[PartialEmoji, str, None] = None,
+        emoji: PartialEmoji | str = None,
         disabled: bool = False,
     ):
         super().__init__(
@@ -148,7 +189,7 @@ class LinkButton(Component):
         url: str,
         style: ButtonStyle,
         label: str = "",
-        emoji: Union[PartialEmoji, str, None] = None,
+        emoji: PartialEmoji | str = None,
         disabled: bool = False,
     ):
         super().__init__(
@@ -167,8 +208,8 @@ class SelectMenu(Component):
     def __init__(
         self,
         custom_id: str,
-        options: List[SelectOption],
-        placeholder: Optional[str] = None,
+        options: list[SelectOption],
+        placeholder: str = None,
         min_values: int = 0,
         max_values: int = 25,
         disabled: bool = False,
@@ -188,8 +229,35 @@ class SelectMenu(Component):
         label: str,
         value: str,
         description: str = "",
-        emoji: Optional[PartialEmoji] = None,
+        emoji: PartialEmoji = None,
         default: bool = False,
     ):
         self.options.append(SelectOption(label, value, description, emoji, default))
         return self
+
+
+class TextInput(Component):
+    """A text input component."""
+
+    def __init__(
+        self,
+        custom_id: str,
+        style: TextInputStyle,
+        label: str,
+        min_length: int = None,
+        max_length: int = None,
+        required: bool = True,
+        value: str = None,
+        placeholder: str = None,
+    ):
+        super().__init__(
+            type=ComponentType.TextInput,
+            custom_id=custom_id,
+            style=style,
+            label=label,
+            min_length=min_length,
+            max_length=max_length,
+            required=required,
+            value=value,
+            placeholder=placeholder,
+        )

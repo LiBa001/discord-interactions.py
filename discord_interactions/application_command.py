@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,8 @@ SOFTWARE.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union, List
+
+from .models import ChannelType
 
 
 class ApplicationCommandType(Enum):
@@ -44,15 +45,22 @@ class ApplicationCommandOptionType(Enum):
     USER = 6
     CHANNEL = 7
     ROLE = 8
+    MENTIONABLE = 9
+    NUMBER = 10
+    ATTACHMENT = 11
 
 
 @dataclass()
 class ApplicationCommandOptionChoice:
     name: str
-    value: Union[str, int]
+    value: str | int | float
+    name_localizations: dict[str, str] = None
 
     def to_dict(self):
-        return {"name": self.name, "value": self.value}
+        data = {"name": self.name, "value": self.value}
+        if self.name_localizations:
+            data["name_localizations"] = self.name_localizations
+        return data
 
 
 @dataclass()
@@ -60,10 +68,15 @@ class ApplicationCommandOption:
     type: ApplicationCommandOptionType
     name: str
     description: str
-    default: bool = False
+    name_localizations: dict[str, str] = None
+    description_localizations: dict[str, str] = None
     required: bool = False
-    choices: List[ApplicationCommandOptionChoice] = None
-    options: List["ApplicationCommandOption"] = None
+    choices: list[ApplicationCommandOptionChoice] = None
+    options: list["ApplicationCommandOption"] = None
+    channel_types: list[ChannelType] = None
+    min_value: int | float = None
+    max_value: int | float = None
+    autocomplete: bool = False
 
     @classmethod
     def from_dict(cls, data) -> "ApplicationCommandOption":
@@ -100,15 +113,18 @@ class ApplicationCommand:
         name: str,
         description: str = None,
         cmd_type: ApplicationCommandType = ApplicationCommandType.CHAT_INPUT,
-        options: List[ApplicationCommandOption] = None,
+        options: list[ApplicationCommandOption] = None,
         default_permission: bool = True,
         **kwargs
     ):
         self.id = int(kwargs.get("id", 0)) or None
         self.type = cmd_type
         self.application_id = int(kwargs.get("application_id", 0)) or None
+        self.guild_id = int(kwargs.get("guild_id", 0)) or None
         self.name = name
+        self.name_localizations = kwargs.get("name_localizations", {})
         self.description = description
+        self.description_localizations = kwargs.get("description_localizations", {})
         self.default_permission = default_permission
         self.version = int(kwargs.get("version", 0)) or None
 
@@ -132,8 +148,12 @@ class ApplicationCommand:
     def to_dict(self) -> dict:
         data = {"name": self.name, "type": self.type.value}
 
+        if self.name_localizations:
+            data["name_localizations"] = self.name_localizations
         if self.description:
             data["description"] = self.description
+        if self.description_localizations:
+            data["description_localizations"] = self.description_localizations
         if self.id:
             data["id"] = self.id
             data["application_id"] = self.application_id

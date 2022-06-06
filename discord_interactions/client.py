@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,45 +24,49 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from requests import Session, Request, Response, exceptions
-from typing import List, Union, Type
+from aiohttp import ClientSession
+from typing import Type, TYPE_CHECKING
 
 from .application_command import ApplicationCommand as Cmd
 from .interaction import Interaction
-from .interaction_response import (
-    InteractionResponse,
-    InteractionApplicationCommandCallbackData,
-    FollowupMessage,
-)
+from .interaction_response import InteractionResponse, FollowupMessage
 from .permissions import GuildPermissions, Permissions
-from . import ocm
+from . import ocm, errors
+
+if TYPE_CHECKING:
+    from .interaction_response import MessageCallbackData
 
 CmdClass = Type[ocm.Command]
 
-API_BASE_URL = "https://discord.com/api/v8"
+API_BASE_URL = "https://discord.com/api/v9"
 
 
 class _BaseClient:
     BASE_URL: str
 
     def __init__(self, app_id: int):
-        self._s = Session()
+        self._s = ClientSession()
         self._app_id = app_id
 
     def _app_url(self, *path) -> str:
         path = "/".join([str(p).strip("/") for p in path if p is not None])
         return f"{self.BASE_URL}/{self._app_id}/{path}"
 
-    def _send(self, req: Request) -> Response:
-        r = self._s.send(self._s.prepare_request(req))
+    async def _send(self, method: str, url: str, json: dict | list = None) -> dict:
+        async with self._s.request(method=method, url=url, json=json) as r:
+            if not r.ok:
+                raise errors.DiscordException(
+                    f"failed with status code {r.status}: {r.reason}: {r.json()}"
+                )
 
-        if not r.ok:
-            raise exceptions.HTTPError(
-                f"failed with status code {r.status_code}: {r.reason}: {r.json()}",
-                response=r,
-            )
+            return await r.json()
 
-        return r
+    async def close(self):
+        await self._s.close()
+
+    @property
+    def closed(self) -> bool:
+        return self._s.closed
 
 
 class ApplicationClient(_BaseClient):
@@ -74,9 +78,11 @@ class ApplicationClient(_BaseClient):
 
         self._s.headers.update(self._auth_header)
 
-        if app_id is None:
-            r = self._send(Request("GET", f"{API_BASE_URL}/users/@me"))
-            self._app_id = int(r.json()["id"])
+    async def _app_url(self, *path) -> str:
+        if self._app_id is None:
+            data = await self._send("GET", f"{API_BASE_URL}/users/@me")
+            self._app_id = int(data["id"])
+        return super()._app_url(*path)
 
     @property
     def _auth_header(self) -> dict:
@@ -86,32 +92,30 @@ class ApplicationClient(_BaseClient):
     def application_id(self) -> int:
         return self._app_id
 
-    def _cmd_url(self, cmd_id=None, guild_id=None):
+    async def _cmd_url(self, cmd_id=None, guild_id=None):
         if guild_id is None:
-            return self._app_url("commands", cmd_id)
+            return await self._app_url("commands", cmd_id)
         else:
-            return self._app_url("guilds", guild_id, "commands", cmd_id)
+            return await self._app_url("guilds", guild_id, "commands", cmd_id)
 
-    def get_commands(self, guild: int = None) -> List[Cmd]:
+    async def get_commands(self, guild: int = None) -> list[Cmd]:
         """Get all global or guild application commands."""
 
-        r = self._send(Request("GET", self._cmd_url(guild_id=guild)))
+        data = await self._send("GET", await self._cmd_url(guild_id=guild))
+        return [Cmd.from_dict(cmd) for cmd in data]
 
-        return [Cmd.from_dict(cmd) for cmd in r.json()]
-
-    def create_command(self, cmd: Union[Cmd, CmdClass], guild: int = None) -> Cmd:
+    async def create_command(self, cmd: Cmd | CmdClass, guild: int = None) -> Cmd:
         """Create a global or guild application command."""
 
         if not isinstance(cmd, Cmd):
             cmd = cmd.to_application_command()
 
-        r = self._send(
-            Request("POST", self._cmd_url(guild_id=guild), json=cmd.to_dict())
+        data = await self._send(
+            "POST", await self._cmd_url(guild_id=guild), json=cmd.to_dict()
         )
+        return Cmd.from_dict(data)
 
-        return Cmd.from_dict(r.json())
-
-    def edit_command(self, cmd: Union[Cmd, CmdClass], guild: int = None) -> Cmd:
+    async def edit_command(self, cmd: Cmd | CmdClass, guild: int = None) -> Cmd:
         """Edit a global or guild application command."""
 
         if not isinstance(cmd, Cmd):
@@ -119,22 +123,21 @@ class ApplicationClient(_BaseClient):
 
         if cmd.id is None:
             # creating a command with a name that already exist, overwrites the old one
-            return self.create_command(cmd)
+            return await self.create_command(cmd)
 
-        r = self._send(
-            Request("PATCH", self._cmd_url(cmd.id, guild), json=cmd.to_dict())
+        data = await self._send(
+            "PATCH", await self._cmd_url(cmd.id, guild), json=cmd.to_dict()
         )
+        return Cmd.from_dict(data)
 
-        return Cmd.from_dict(r.json())
-
-    def delete_command(self, cmd_id: int, guild: int = None):
+    async def delete_command(self, cmd_id: int, guild: int = None):
         """Delete a global or guild application command."""
 
-        self._send(Request("DELETE", self._cmd_url(cmd_id, guild)))
+        await self._send("DELETE", await self._cmd_url(cmd_id, guild))
 
-    def bulk_overwrite_commands(
-        self, commands: List[Union[Cmd, CmdClass]], guild: int = None
-    ) -> List[Cmd]:
+    async def bulk_overwrite_commands(
+        self, commands: list[Cmd | CmdClass], guild: int = None
+    ) -> list[Cmd]:
         """Overwrite all existing global/guild commands."""
 
         commands_data = []
@@ -143,39 +146,37 @@ class ApplicationClient(_BaseClient):
                 cmd = cmd.to_application_command()
             commands_data.append(cmd.to_dict())
 
-        r = self._send(
-            Request("PUT", self._cmd_url(guild_id=guild), json=commands_data)
+        data = await self._send(
+            "PUT", await self._cmd_url(guild_id=guild), json=commands_data
         )
 
-        return [Cmd.from_dict(cmd) for cmd in r.json()]
+        return [Cmd.from_dict(cmd) for cmd in data]
 
-    def get_guild_command_permissions(self, guild: int) -> List[GuildPermissions]:
+    async def get_guild_command_permissions(self, guild: int) -> list[GuildPermissions]:
         """Fetch command permissions for all commands for your app in a guild."""
 
-        r = self._send(Request("GET", f"{self._cmd_url(guild)}/permissions"))
+        data = await self._send("GET", f"{await self._cmd_url(guild)}/permissions")
 
-        return [GuildPermissions.from_dict(p) for p in r.json()]
+        return [GuildPermissions.from_dict(p) for p in data]
 
-    def get_command_permissions(self, cmd_id: int, guild: int) -> GuildPermissions:
+    async def get_command_permissions(self, cmd_id: int, guild: int) -> GuildPermissions:
         """
         Fetch command permissions for a specific command for your app in a guild.
         """
 
-        r = self._send(Request("GET", f"{self._cmd_url(cmd_id, guild)}/permissions"))
+        data = await self._send("GET", f"{await self._cmd_url(cmd_id, guild)}/permissions")
 
-        return GuildPermissions.from_dict(r.json())
+        return GuildPermissions.from_dict(data)
 
-    def edit_command_permissions(self, cmd_id: int, guild: int, perms: Permissions):
+    async def edit_command_permissions(self, cmd_id: int, guild: int, perms: Permissions):
         """
         Edit command permissions for a specific command for your app in a guild.
         """
 
-        self._send(
-            Request(
-                "PUT",
-                f"{self._cmd_url(cmd_id, guild)}/permissions",
-                json=perms.to_dict(),
-            )
+        await self._send(
+            "PUT",
+            f"{await self._cmd_url(cmd_id, guild)}/permissions",
+            json=perms.to_dict(),
         )
 
 
@@ -190,39 +191,39 @@ class InteractionClient(_BaseClient):
     def _url(self, *path):
         return self._app_url(self._interaction.token, *path)
 
-    def create_response(self, resp: InteractionResponse):
-        """Create a response to an interaction from the gateway."""
+    async def create_response(self, resp: InteractionResponse):
+        """Create a response to an interaction received via the gateway."""
 
         url = "{0}/interactions/{1.id}/{1.token}/callback".format(
             API_BASE_URL,
             self._interaction,
         )
 
-        self._send(Request("POST", url, json=resp.to_dict()))
+        await self._send("POST", url, json=resp.to_dict())
 
-    def edit_response(self, data: InteractionApplicationCommandCallbackData):
+    async def edit_response(self, data: MessageCallbackData):
         """Edit the initial Interaction response."""
 
-        self._send(
-            Request("PATCH", self._url("messages/@original"), json=data.to_dict())
+        await self._send(
+            "PATCH", self._url("messages/@original"), json=data.to_dict()
         )
 
-    def delete_response(self):
+    async def delete_response(self):
         """Delete the initial Interaction response."""
 
-        self._send(Request("DELETE", self._url("messages/@original")))
+        await self._send("DELETE", self._url("messages/@original"))
 
-    def create_message(self, msg: FollowupMessage):  # TODO: return message
+    async def create_message(self, msg: FollowupMessage):  # TODO: return message
         """Create a followup message for an Interaction."""
 
-        self._send(Request("POST", self._url(), json=msg.to_dict()))
+        await self._send("POST", self._url(), json=msg.to_dict())
 
-    def edit_message(self, msg_id: int, msg: FollowupMessage):
+    async def edit_message(self, msg_id: int, msg: FollowupMessage):
         """Edit a followup message for an Interaction."""
 
-        self._send(Request("PATCH", self._url("messages", msg_id), json=msg.to_dict()))
+        await self._send("PATCH", self._url("messages", msg_id), json=msg.to_dict())
 
-    def delete_message(self, msg_id: int):
+    async def delete_message(self, msg_id: int):
         """Delete a followup message for an Interaction."""
 
-        self._send(Request("DELETE", self._url("messages", msg_id)))
+        await self._send("DELETE", self._url("messages", msg_id))

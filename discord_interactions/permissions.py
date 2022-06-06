@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2021 Linus Bartsch
+Copyright (c) 2020-2022 Linus Bartsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ class PermissionType(Enum):
 
 @dataclass()
 class Permissions:
-    """Allow to enable or disable commands for specific users or roles in a guild."""
+    """Allow enabling or disabling commands for specific users or roles in a guild."""
 
     id: int  # id of the role or user
     type: PermissionType

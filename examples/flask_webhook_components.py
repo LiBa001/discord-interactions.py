@@ -6,7 +6,7 @@ from discord_interactions import (
     Button,
     ButtonStyle,
     ActionRow,
-    Response,
+    MessageResponse,
 )
 
 app = Flask(__name__)
@@ -17,7 +17,7 @@ interactions = Interactions(app, os.getenv("CLIENT_PUBLIC_KEY"))
 def hello_components():
     btn = Button("my_button", label="Click me!")
 
-    return Response("This is a button.", components=[ActionRow(btn)])
+    return MessageResponse("This is a button.", components=[ActionRow(btn)])
 
 
 @interactions.component("my_button")
@@ -25,7 +25,7 @@ def button_handler(ctx: ComponentContext):
     return f"{ctx.interaction.user.username} clicked the button"
 
 
-@button_handler.after_component
+@button_handler.after_element
 def _after_button_handler(ctx: AfterComponentContext):
     ctx.send(
         f"this is a followup message to {ctx.interaction.user.username}'s button click"
@@ -38,7 +38,7 @@ def delete_resource(_, resource_id: int):
         f"confirm_deletion:{resource_id}", style=ButtonStyle.DANGER, label="DELETE"
     )
 
-    return Response("This is irreversible! Are you sure?", components=[ActionRow(btn)])
+    return MessageResponse("This is irreversible! Are you sure?", components=[ActionRow(btn)])
 
 
 @interactions.component("confirm_deletion")
