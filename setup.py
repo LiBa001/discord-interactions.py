@@ -26,7 +26,7 @@ setup(
         "Topic :: Software Development :: Libraries",
     ],
     python_requires=">=3.10",
-    install_requires=["pynacl", "requests"],
+    install_requires=["pynacl", "aiohttp"],
     extras_require={"flask": ["flask[async]>=2.0"]},
     keywords="discord discord-py discord-bot wrapper",
     packages=find_packages(exclude=["examples", "tests", "docs"]),
