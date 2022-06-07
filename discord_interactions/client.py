@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 CmdClass = Type[ocm.Command]
 
-API_BASE_URL = "https://discord.com/api/v9"
+API_BASE_URL = "https://discord.com/api/v10"
 
 
 class _BaseClient:
@@ -159,16 +159,22 @@ class ApplicationClient(_BaseClient):
 
         return [GuildPermissions.from_dict(p) for p in data]
 
-    async def get_command_permissions(self, cmd_id: int, guild: int) -> GuildPermissions:
+    async def get_command_permissions(
+        self, cmd_id: int, guild: int
+    ) -> GuildPermissions:
         """
         Fetch command permissions for a specific command for your app in a guild.
         """
 
-        data = await self._send("GET", f"{await self._cmd_url(cmd_id, guild)}/permissions")
+        data = await self._send(
+            "GET", f"{await self._cmd_url(cmd_id, guild)}/permissions"
+        )
 
         return GuildPermissions.from_dict(data)
 
-    async def edit_command_permissions(self, cmd_id: int, guild: int, perms: Permissions):
+    async def edit_command_permissions(
+        self, cmd_id: int, guild: int, perms: Permissions
+    ):
         """
         Edit command permissions for a specific command for your app in a guild.
         """
@@ -204,9 +210,7 @@ class InteractionClient(_BaseClient):
     async def edit_response(self, data: MessageCallbackData):
         """Edit the initial Interaction response."""
 
-        await self._send(
-            "PATCH", self._url("messages/@original"), json=data.to_dict()
-        )
+        await self._send("PATCH", self._url("messages/@original"), json=data.to_dict())
 
     async def delete_response(self):
         """Delete the initial Interaction response."""

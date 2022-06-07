@@ -32,7 +32,7 @@ from discord_interactions import (
     InteractionCallbackData,
     InteractionResponse,
     FollowupMessage,
-    Component
+    Component,
 )
 
 if TYPE_CHECKING:
@@ -107,7 +107,7 @@ class ComponentContext(ElementContext):
 
     @property
     def values(self) -> list | None:
-        """ Gets selected values if component is a select menu. """
+        """Gets selected values if component is a select menu."""
         return self._interaction.data.values
 
 

@@ -121,7 +121,7 @@ class BaseExtension(ABC):
 
     @staticmethod
     def _get_cb_args_kwargs(
-            cb: FunctionType, options: list[ApplicationCommandInteractionDataOption]
+        cb: FunctionType, options: list[ApplicationCommandInteractionDataOption]
     ) -> tuple[list, dict]:
         # count difference between command options and callback args (without ctx)
         arg_diff = cb.__code__.co_argcount - (len(options) + 1)
@@ -137,7 +137,7 @@ class BaseExtension(ABC):
 
         annotations = get_type_hints(cb)
 
-        zipped_args = zip(cb.__code__.co_varnames[1:len(cb_args) + 1], cb_args)
+        zipped_args = zip(cb.__code__.co_varnames[1 : len(cb_args) + 1], cb_args)
 
         def convert(name, value):
             return t(value) if (t := annotations.get(name)) else value
@@ -148,10 +148,10 @@ class BaseExtension(ABC):
 
     @classmethod
     async def _handle_subcommand(
-            cls,
-            ctx: CommandContext,
-            subcmd: ApplicationCommandInteractionDataOption,
-            data: SubCommandData,
+        cls,
+        ctx: CommandContext,
+        subcmd: ApplicationCommandInteractionDataOption,
+        data: SubCommandData,
     ) -> _CommandCallbackReturnType:
         """Handle calling registered callbacks corresponding to invoked subcommands"""
 
@@ -231,9 +231,7 @@ class BaseExtension(ABC):
             r_type = InteractionCallbackType.DEFERRED_CHANNEL_MESSAGE
             r_data = None
             if ephemeral:
-                r_data = MessageCallbackData(
-                    flags=ResponseFlags.EPHEMERAL
-                )
+                r_data = MessageCallbackData(flags=ResponseFlags.EPHEMERAL)
         else:
             r_type = InteractionCallbackType.CHANNEL_MESSAGE
             r_data = MessageCallbackData(str(resp))
@@ -242,7 +240,9 @@ class BaseExtension(ABC):
 
         return InteractionResponse(type=r_type, data=r_data)
 
-    async def _handle_application_command_interaction(self, interaction: Interaction) -> InteractionResponse | None:
+    async def _handle_application_command_interaction(
+        self, interaction: Interaction
+    ) -> InteractionResponse | None:
         # handle an application command (slash command)
         logger.debug("incoming application command interaction")
         cmd_name = interaction.data.name
@@ -296,7 +296,9 @@ class BaseExtension(ABC):
 
         return self._build_channel_message(resp)
 
-    async def _handle_ui_element_interaction(self, ctx: ElementContext, elements_data: dict):
+    async def _handle_ui_element_interaction(
+        self, ctx: ElementContext, elements_data: dict
+    ):
         prefix, *custom_args = ctx.custom_id.split(":")
 
         component_data = elements_data[prefix]
@@ -335,7 +337,9 @@ class BaseExtension(ABC):
 
         return resp
 
-    async def _handle_message_component_interaction(self, interaction: Interaction) -> InteractionResponse | None:
+    async def _handle_message_component_interaction(
+        self, interaction: Interaction
+    ) -> InteractionResponse | None:
         # a message component has been interacted with (e.g. button clicked)
         logger.debug("incoming message component interaction")
         ctx = ComponentContext(self, interaction)
@@ -357,7 +361,9 @@ class BaseExtension(ABC):
 
         return interaction_response
 
-    async def _handle_modal_interaction(self, interaction: Interaction) -> InteractionResponse | None:
+    async def _handle_modal_interaction(
+        self, interaction: Interaction
+    ) -> InteractionResponse | None:
         # a modal has been submitted
         logger.debug("incoming modal interaction")
         ctx = ModalContext(self, interaction)
@@ -461,9 +467,7 @@ class BaseExtension(ABC):
 
         return element_data
 
-    def component(
-        self, component_id: str
-    ) -> Callable[[_ElementCallback], ElementData]:
+    def component(self, component_id: str) -> Callable[[_ElementCallback], ElementData]:
         """
         A decorator to register a message component.
         Calls :meth:`register_element` internally.
@@ -472,13 +476,13 @@ class BaseExtension(ABC):
         """
 
         def decorator(f: _ElementCallback) -> ElementData:
-            return self.register_element(ElementData.create_from(ElementType.MESSAGE_COMPONENT, component_id, f))
+            return self.register_element(
+                ElementData.create_from(ElementType.MESSAGE_COMPONENT, component_id, f)
+            )
 
         return decorator
 
-    def modal(
-        self, modal_id: str
-    ) -> Callable[[_ElementCallback], ElementData]:
+    def modal(self, modal_id: str) -> Callable[[_ElementCallback], ElementData]:
         """
         A decorator to register a modal.
         Calls :meth:`register_element` internally.
@@ -487,7 +491,9 @@ class BaseExtension(ABC):
         """
 
         def decorator(f: _ElementCallback) -> ElementData:
-            return self.register_element(ElementData.create_from(ElementType.MODAL, modal_id, f))
+            return self.register_element(
+                ElementData.create_from(ElementType.MODAL, modal_id, f)
+            )
 
         return decorator
 

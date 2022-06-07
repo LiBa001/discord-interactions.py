@@ -31,10 +31,10 @@ from .models import PartialEmoji
 
 
 class ComponentType(Enum):
-    ActionRow = 1   # A container for other components
-    Button = 2      # A clickable button
+    ActionRow = 1  # A container for other components
+    Button = 2  # A clickable button
     SelectMenu = 3  # A select menu for picking from choices
-    TextInput = 4   # A text input object
+    TextInput = 4  # A text input object
 
 
 class ButtonStyle(Enum):

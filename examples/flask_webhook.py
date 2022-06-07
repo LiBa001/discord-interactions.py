@@ -229,9 +229,15 @@ def _on_error_example_error(e: Exception):
 
 @interactions.command(modal_echo_cmd)
 def modal_echo():
-    return ModalResponse("echo", "Whatcha gonna say?", [
-        TextInput("echo-text", TextInputStyle.Short, "Echo text", placeholder="Lenore?")
-    ])
+    return ModalResponse(
+        "echo",
+        "Whatcha gonna say?",
+        [
+            TextInput(
+                "echo-text", TextInputStyle.Short, "Echo text", placeholder="Lenore?"
+            )
+        ],
+    )
 
 
 @interactions.modal("echo")

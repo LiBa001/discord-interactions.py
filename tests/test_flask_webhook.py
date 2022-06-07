@@ -181,7 +181,7 @@ command_data = [
                             "discriminator": "6538",
                             "id": "167348773423415296",
                             "public_flags": 1,
-                            "username": "ian"
+                            "username": "ian",
                         },
                         "channel_id": "772908445358620702",
                         "components": [],
@@ -196,7 +196,7 @@ command_data = [
                         "pinned": False,
                         "timestamp": "2021-07-22T15:42:57.744000+00:00",
                         "tts": False,
-                        "type": 0
+                        "type": 0,
                     }
                 },
             },

@@ -45,7 +45,7 @@ _CommandCallback: TypeAlias = Annotated[
         Callable[[CommandContext], _CommandCallbackReturnType],
         Callable[[CommandContext, Any], _CommandCallbackReturnType],
     ],
-    FunctionType
+    FunctionType,
 ]
 _AfterCommandCallback: TypeAlias = Callable[[AfterCommandContext], None]
 _DecoratedCommand: TypeAlias = ApplicationCommand | str | _CommandCallback

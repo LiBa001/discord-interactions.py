@@ -38,7 +38,9 @@ def delete_resource(_, resource_id: int):
         f"confirm_deletion:{resource_id}", style=ButtonStyle.DANGER, label="DELETE"
     )
 
-    return MessageResponse("This is irreversible! Are you sure?", components=[ActionRow(btn)])
+    return MessageResponse(
+        "This is irreversible! Are you sure?", components=[ActionRow(btn)]
+    )
 
 
 @interactions.component("confirm_deletion")

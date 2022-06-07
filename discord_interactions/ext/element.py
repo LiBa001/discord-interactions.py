@@ -37,7 +37,7 @@ _ElementCallbackReturnType: TypeAlias = Union[InteractionResponse, str, None]
 _ElementCallback: TypeAlias = Union[
     Callable[[], _ElementCallbackReturnType],
     Callable[[ComponentContext], _ElementCallbackReturnType],
-    Callable[[ComponentContext, Any], _ElementCallbackReturnType]
+    Callable[[ComponentContext, Any], _ElementCallbackReturnType],
 ]
 _AfterElementCallback: TypeAlias = Callable[[AfterComponentContext], None]
 
@@ -73,7 +73,9 @@ class ElementData(Generic[T]):
         self.error_callback = None
 
     @classmethod
-    def create_from(cls, _type: T, custom_id: str, callback: Callable) -> ElementData[T]:
+    def create_from(
+        cls, _type: T, custom_id: str, callback: Callable
+    ) -> ElementData[T]:
         """
         Create an instance of :class:`ElementData`.
 
@@ -107,7 +109,9 @@ class ElementData(Generic[T]):
         self.error_callback = f
 
 
-def element(custom_id: str, _type: T = ElementType.MESSAGE_COMPONENT) -> Callable[[_ElementCallback], ElementData[T]]:
+def element(
+    custom_id: str, _type: T = ElementType.MESSAGE_COMPONENT
+) -> Callable[[_ElementCallback], ElementData[T]]:
     """
     A decorator to register a callback on a UI element.
 

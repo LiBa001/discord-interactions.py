@@ -111,12 +111,12 @@ class ModalCallbackData:
         return {
             "custom_id": self.custom_id,
             "title": self.title,
-            "components": [c.to_dict() for c in self.components]
+            "components": [c.to_dict() for c in self.components],
         }
 
 
 InteractionCallbackData: TypeAlias = (
-        MessageCallbackData | AutocompleteCallbackData | ModalCallbackData
+    MessageCallbackData | AutocompleteCallbackData | ModalCallbackData
 )
 
 
@@ -193,8 +193,7 @@ class ModalResponse(InteractionResponse):
 
     def __init__(self, custom_id: str, title: str, components: list[Component] = None):
         super().__init__(
-            type=self._TYPE,
-            data=ModalCallbackData(custom_id, title, components or [])
+            type=self._TYPE, data=ModalCallbackData(custom_id, title, components or [])
         )
 
     def add_component(self, component: Component):
