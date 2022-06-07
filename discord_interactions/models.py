@@ -31,8 +31,6 @@ from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass
 
-from .message_component import Component
-
 
 class UserFlag(Enum):
     """
@@ -397,7 +395,8 @@ class Message:
         self.referenced_message = (m := data.get("reference_message")) and Message(**m)
         self.interaction = data.get("interaction")
         self.thread = (c := data.get("thread")) and Channel(**c)
-        self.components = [Component(**c) for c in data.get("components")]
+        # TODO/FIX: convert to Component objects, avoiding circular import
+        self.components = [c for c in data.get("components")]
 
 
 @dataclass
