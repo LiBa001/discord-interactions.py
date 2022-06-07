@@ -131,7 +131,7 @@ class ApplicationCommandInteractionData(_OptionGetter):
             ApplicationCommandInteractionDataOption(**option)
             for option in kwargs.get("options", [])
         ]
-        self.target_id = int(kwargs.get("target_id"), 0) or None
+        self.target_id = int(kwargs.get("target_id", 0)) or None
 
 
 class ComponentInteractionData:

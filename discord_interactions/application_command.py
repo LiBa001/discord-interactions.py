@@ -95,7 +95,6 @@ class ApplicationCommandOption:
             "type": self.type.value,
             "name": self.name,
             "description": self.description,
-            "default": self.default,
             "required": self.required,
         }
 
