@@ -47,8 +47,15 @@ class _BaseClient:
     BASE_URL: str
 
     def __init__(self, app_id: int):
-        self._s = ClientSession()
+        self._s = None
         self._app_id = app_id
+
+    async def __aenter__(self):
+        self._s = ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
 
     def _app_url(self, *path) -> str:
         path = "/".join([str(p).strip("/") for p in path if p is not None])

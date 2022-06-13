@@ -69,6 +69,7 @@ class AfterCommandContext(CommandContext):
         super(AfterCommandContext, self).__init__(ext, interaction)
 
         self._response = response
+        # TODO (?): wrap client with async context manager
         self._client = InteractionClient(self.interaction)
 
     @property

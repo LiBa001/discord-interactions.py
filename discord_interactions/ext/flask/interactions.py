@@ -51,6 +51,9 @@ class Interactions(BaseExtension):
         app.add_url_rule(
             path, "interactions", app.ensure_sync(self._main), methods=["POST"]
         )
+        # TODO/FIX: call after request hook after request has been actually sent.
+        # Flask's after request funcs don't fulfill that requirement as it is meant
+        # to MODIFY the response BEFORE it is sent.
         app.after_request_funcs.setdefault(None, []).append(self._after_request)
 
     @property

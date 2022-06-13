@@ -393,8 +393,8 @@ class BaseExtension(ABC):
                 return None
 
     @abstractmethod
-    def _main(self, *args, **kwargs):
-        resp = self._handle_interaction(...)
+    async def _main(self, *args, **kwargs):
+        resp = await self._handle_interaction(...)
 
     def _get_after_request_data(
         self, interaction: Interaction, interaction_response: InteractionResponse
@@ -411,7 +411,7 @@ class BaseExtension(ABC):
         return target, ctx
 
     @abstractmethod
-    def _after_request(self, *args, **kwargs):
+    async def _after_request(self, *args, **kwargs):
         target, ctx = self._get_after_request_data(..., ...)
         if target.after_callback:
             target.after_callback(ctx)
