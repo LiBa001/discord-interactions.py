@@ -142,7 +142,7 @@ class BaseExtension(ABC):
         def convert(name, value):
             return t(value) if (t := annotations.get(name)) else value
 
-        cb_args = [convert(name, value) for name, value in zipped_args]
+        cb_args = [convert(name, o.value) for name, o in zipped_args]
         cb_kwargs = {o.name: convert(o.name, o.value) for o in cb_kwargs}
         return cb_args, cb_kwargs
 
