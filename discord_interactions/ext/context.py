@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 from discord_interactions import (
     InteractionClient,
     Interaction,
-    InteractionCallbackData,
+    MessageCallbackData,
     InteractionResponse,
     FollowupMessage,
     Component,
@@ -81,7 +81,7 @@ class AfterCommandContext(CommandContext):
         return self._client
 
     def edit_original(self, content: str, **options):
-        data = InteractionCallbackData(content, **options)
+        data = MessageCallbackData(content, **options)
 
         self.client.edit_response(data)
 
