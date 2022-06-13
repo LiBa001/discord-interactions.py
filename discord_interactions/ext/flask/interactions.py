@@ -23,6 +23,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+import inspect
 
 from flask import Flask, request, jsonify, Response, g, current_app
 from discord_interactions import Interaction, verify_key
@@ -51,9 +52,6 @@ class Interactions(BaseExtension):
         app.add_url_rule(
             path, "interactions", app.ensure_sync(self._main), methods=["POST"]
         )
-        # TODO/FIX: call after request hook after request has been actually sent.
-        # Flask's after request funcs don't fulfill that requirement as it is meant
-        # to MODIFY the response BEFORE it is sent.
         app.after_request_funcs.setdefault(None, []).append(self._after_request)
 
     @property
@@ -92,6 +90,14 @@ class Interactions(BaseExtension):
 
         return jsonify(resp.to_dict())
 
+    @staticmethod
+    async def _after_callback_wrapper(ctx, f):
+        async with ctx:
+            if inspect.iscoroutinefunction(f):
+                await f(ctx)
+            else:
+                f(ctx)
+
     def _after_request(self, response: Response):
         try:
             interaction = g.interaction
@@ -106,7 +112,8 @@ class Interactions(BaseExtension):
 
         if target and target.after_callback is not None:
             t = Thread(
-                target=current_app.ensure_sync(target.after_callback), args=(ctx,)
+                target=current_app.ensure_sync(self._after_callback_wrapper),
+                args=(ctx, target.after_callback),
             )
             t.start()
 

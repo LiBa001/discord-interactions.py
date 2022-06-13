@@ -69,8 +69,14 @@ class AfterCommandContext(CommandContext):
         super(AfterCommandContext, self).__init__(ext, interaction)
 
         self._response = response
-        # TODO (?): wrap client with async context manager
         self._client = InteractionClient(self.interaction)
+
+    async def __aenter__(self):
+        await self.client.__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.__aexit__(exc_type, exc_val, exc_tb)
 
     @property
     def response(self) -> InteractionResponse:
@@ -80,15 +86,15 @@ class AfterCommandContext(CommandContext):
     def client(self) -> InteractionClient:
         return self._client
 
-    def edit_original(self, content: str, **options):
+    async def edit_original(self, content: str, **options):
         data = MessageCallbackData(content, **options)
 
-        self.client.edit_response(data)
+        await self.client.edit_response(data)
 
-    def send(self, msg: str, tts: bool = False):
+    async def send(self, msg: str, tts: bool = False):
         followup_msg = FollowupMessage(content=msg, tts=tts)
 
-        self.client.create_message(followup_msg)
+        await self.client.create_message(followup_msg)
 
 
 class ElementContext(CommandContext):
