@@ -1,8 +1,10 @@
-import pytest
-from flask import Response, Flask
-from typing import Tuple, TypeVar
+from __future__ import annotations
 
-from examples import flask_webhook, flask_webhook_ocm, flask_webhook_components
+import pytest
+from flask import Flask
+from typing import Tuple, TypeVar, TYPE_CHECKING
+
+from examples import flask_webhook, flask_webhook_components
 
 from discord_interactions import (
     InteractionType,
@@ -11,9 +13,12 @@ from discord_interactions import (
     ApplicationCommandType,
 )
 
+if TYPE_CHECKING:
+    from flask.testing import TestResponse
+
 DO_NOT_VALIDATE = TypeVar("DO_NOT_VALIDATE")
 
-command_apps = [flask_webhook.app, flask_webhook_ocm.app]
+command_apps = [flask_webhook.app]  # , flask_webhook_ocm.app]
 command_data = [
     (
         {
@@ -200,7 +205,7 @@ command_data = [
                     }
                 },
             },
-            "type": ApplicationCommandType.USER.value,
+            "type": ApplicationCommandType.MESSAGE.value,
             "target_id": "867793854505943041",
         },
         {
@@ -238,10 +243,11 @@ def _test_interaction(app: Flask, data: Tuple[dict, dict], i_type: InteractionTy
         },
         "token": "abc",
         "version": 1,
+        "locale": "en",
     }
 
     with app.test_client() as client:
-        rv: Response = client.post("/", json=interaction)
+        rv: TestResponse = client.post("/", json=interaction)
 
     interaction_response = rv.get_json()
     expected_response = data[1]

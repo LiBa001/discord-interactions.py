@@ -122,21 +122,22 @@ delete_cmd = ApplicationCommand(
 # so for this command only the callback gets registered.
 # This cannot be used to register the slash command at Discord.
 @interactions.command("ping")
-def ping(_: Interaction):
+def ping(_: CommandContext):
     return "pong"
 
 
 @interactions.command(echo_cmd)
-def echo(interaction: Interaction):
-    msg = interaction.data.options[0].value  # "message" option content
+def echo(ctx: CommandContext):
+    # alternative way of accessing command option values via the interaction object
+    # when not using function parameters for getting the options passed
+    msg = ctx.interaction.data.options[0].value  # "message" option content
 
     return msg, False
 
 
 @interactions.command(rps_cmd)
-def rps(interaction: Interaction):
+def rps(_: CommandContext, user_choice: str):
     choice = random.choice([symbol.value for symbol in rps_cmd.options[0].choices])
-    user_choice = interaction.data.options[0].value
 
     if user_choice == choice:
         msg = "It's a draw!"
@@ -204,9 +205,8 @@ def generate(_: Interaction):
 
 
 @generate.subcommand()
-def sha1(_: CommandContext, sub: ApplicationCommandInteractionDataOption):
-    txt = sub.get_option("text").value
-    return f'"{txt}"\n=> `{hashlib.sha1(txt.encode()).hexdigest()}`', True
+def sha1(_: CommandContext, text: str):
+    return f'"{text}"\n=> `{hashlib.sha1(text.encode()).hexdigest()}`', True
 
 
 @generate.fallback

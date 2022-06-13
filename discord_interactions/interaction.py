@@ -51,19 +51,24 @@ class ApplicationCommandInteractionDataResolved:
     attachments: dict[int, Attachment]
 
     def __init__(self, **kwargs):
-        self.users = {u_id: User(**u) for u_id, u in kwargs.get("users", {}).items()}
-        self.members = {
-            m_id: Member(**m) for m_id, m in kwargs.get("members", {}).items()
+        self.users = {
+            int(u_id): User(**u) for u_id, u in kwargs.get("users", {}).items()
         }
-        self.roles = {r_id: Role(**r) for r_id, r in kwargs.get("roles", {}).items()}
+        self.members = {
+            int(m_id): Member(**m) for m_id, m in kwargs.get("members", {}).items()
+        }
+        self.roles = {
+            int(r_id): Role(**r) for r_id, r in kwargs.get("roles", {}).items()
+        }
         self.channels = {
-            c_id: Channel(**c) for c_id, c in kwargs.get("channels", {}).items()
+            int(c_id): Channel(**c) for c_id, c in kwargs.get("channels", {}).items()
         }
         self.messages = {
-            m_id: Message(**m) for m_id, m in kwargs.get("messages", {}).items()
+            int(m_id): Message(**m) for m_id, m in kwargs.get("messages", {}).items()
         }
         self.attachments = {
-            a_id: Attachment(**a) for a_id, a in kwargs.get("attachments", {}).items()
+            int(a_id): Attachment(**a)
+            for a_id, a in kwargs.get("attachments", {}).items()
         }
 
 

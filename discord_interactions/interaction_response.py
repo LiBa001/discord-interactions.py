@@ -166,7 +166,7 @@ class MessageResponse(InteractionResponse):
         content: str = None,
         embed: DictConvertible = None,
         ephemeral: bool = False,
-        **kwargs
+        **kwargs,
     ):
         kwargs.setdefault("flags", ResponseFlags.NONE)
         if ephemeral:
