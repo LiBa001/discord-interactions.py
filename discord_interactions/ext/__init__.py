@@ -8,5 +8,6 @@ from .context import (
     AfterCommandContext,
     ComponentContext,
     AfterComponentContext,
+    ModalContext,
 )
 from . import errors

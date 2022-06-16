@@ -4,19 +4,63 @@ import pytest
 from flask import Flask
 from typing import Tuple, TypeVar, TYPE_CHECKING
 
-from examples import flask_webhook, flask_webhook_components
+from examples import flask_webhook, flask_webhook_components, flask_webhook_modals
 
 from discord_interactions import (
     InteractionType,
     InteractionCallbackType,
     ComponentType,
     ApplicationCommandType,
+    TextInputStyle,
 )
 
 if TYPE_CHECKING:
     from flask.testing import TestResponse
 
 DO_NOT_VALIDATE = TypeVar("DO_NOT_VALIDATE")
+
+
+def _test_interaction(app: Flask, data: Tuple[dict, dict], i_type: InteractionType):
+    app.config["TESTING"] = True
+
+    interaction = {
+        "id": "11111",
+        "application_id": "55555",
+        "type": i_type.value,
+        "data": data[0],
+        "guild_id": "22222",
+        "channel_id": "33333",
+        "member": {
+            "user": {
+                "id": "987654321",
+                "username": "test-user",
+                "discriminator": "1234",
+            },
+            "nick": None,
+            "roles": [],
+            "joined_at": "2021-01-04T23:38:01.370760",
+            "deaf": False,
+            "mute": False,
+        },
+        "token": "abc",
+        "version": 1,
+        "locale": "en",
+    }
+
+    with app.test_client() as client:
+        rv: TestResponse = client.post("/", json=interaction)
+
+    interaction_response = rv.get_json()
+    expected_response = data[1]
+
+    for key, value in expected_response["data"].items():
+        if value is DO_NOT_VALIDATE:
+            interaction_response["data"][key] = DO_NOT_VALIDATE
+
+    assert interaction_response == expected_response
+
+
+# ===== COMMAND TESTS =====
 
 command_apps = [flask_webhook.app]  # , flask_webhook_ocm.app]
 command_data = [
@@ -219,46 +263,6 @@ command_data = [
 ]
 
 
-def _test_interaction(app: Flask, data: Tuple[dict, dict], i_type: InteractionType):
-    app.config["TESTING"] = True
-
-    interaction = {
-        "id": "11111",
-        "application_id": "55555",
-        "type": i_type.value,
-        "data": data[0],
-        "guild_id": "22222",
-        "channel_id": "33333",
-        "member": {
-            "user": {
-                "id": "987654321",
-                "username": "test-user",
-                "discriminator": "1234",
-            },
-            "nick": None,
-            "roles": [],
-            "joined_at": "2021-01-04T23:38:01.370760",
-            "deaf": False,
-            "mute": False,
-        },
-        "token": "abc",
-        "version": 1,
-        "locale": "en",
-    }
-
-    with app.test_client() as client:
-        rv: TestResponse = client.post("/", json=interaction)
-
-    interaction_response = rv.get_json()
-    expected_response = data[1]
-
-    for key, value in expected_response["data"].items():
-        if value is DO_NOT_VALIDATE:
-            interaction_response["data"][key] = DO_NOT_VALIDATE
-
-    assert interaction_response == expected_response
-
-
 @pytest.mark.parametrize("app", command_apps)
 @pytest.mark.parametrize("data", command_data)
 def test_commands(app: Flask, data: Tuple[dict, dict]):
@@ -266,6 +270,8 @@ def test_commands(app: Flask, data: Tuple[dict, dict]):
 
     _test_interaction(app, data, InteractionType.APPLICATION_COMMAND)
 
+
+# ===== COMPONENT TESTS =====
 
 component_apps = [flask_webhook_components.app]
 component_data = [
@@ -298,3 +304,46 @@ def test_components(app: Flask, data: Tuple[dict, dict]):
     """Test message components."""
 
     _test_interaction(app, data, InteractionType.MESSAGE_COMPONENT)
+
+
+# ===== MODAL TESTS =====
+
+modal_apps = [flask_webhook_modals.app]
+modal_data = [
+    (
+        # modal submit interaction
+        {
+            "custom_id": "resource_creation",
+            "components": [
+                {
+                    "type": ComponentType.TextInput.value,
+                    "custom_id": "title",
+                    "label": "Title",
+                    "style": TextInputStyle.Short.value,
+                    "min_length": 5,
+                    "max_length": 200,
+                    "value": "test",
+                },
+                {
+                    "type": ComponentType.TextInput.value,
+                    "custom_id": "description",
+                    "label": "Description",
+                    "style": TextInputStyle.Paragraph.value,
+                    "value": "hi mom",
+                },
+            ],
+        },
+        {
+            "type": InteractionCallbackType.CHANNEL_MESSAGE.value,
+            "data": {"content": "resource created:\n\n**test**\n```hi mom```"},
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("app", modal_apps)
+@pytest.mark.parametrize("data", modal_data)
+def test_components(app: Flask, data: Tuple[dict, dict]):
+    """Test modals."""
+
+    _test_interaction(app, data, InteractionType.MODAL_SUBMIT)

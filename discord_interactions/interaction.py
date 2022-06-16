@@ -157,7 +157,7 @@ class ModalInteractionData:
 
     def __init__(self, **kwargs):
         self.custom_id = kwargs["custom_id"]
-        self.components = [Component(c) for c in kwargs["components"]]
+        self.components = [Component(**c) for c in kwargs["components"]]
 
 
 InteractionData: TypeAlias = (
