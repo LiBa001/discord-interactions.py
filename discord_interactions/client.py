@@ -85,7 +85,10 @@ class ApplicationClient(_BaseClient):
         super().__init__(app_id)
         self._token = token
 
+    async def __aenter__(self):
+        await super(ApplicationClient, self).__aenter__()
         self._s.headers.update(self._auth_header)
+        return self
 
     async def _app_url(self, *path) -> str:
         if self._app_id is None:

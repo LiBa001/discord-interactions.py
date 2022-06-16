@@ -29,7 +29,6 @@ def create_resource():
 
 @interactions.modal("resource_creation")
 def resource_creation(ctx: ModalContext):
-    print(ctx.components)
     title = ctx.get_input("title").value
     description = ctx.get_input("description").value
     return f"resource created:\n\n**{title}**\n```{description}```"
