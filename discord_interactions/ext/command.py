@@ -215,6 +215,6 @@ def command(
             return CommandData.create_from(cmd, f)
         else:
             # use function name as command name
-            return CommandData.create_from(f.__name__.lower().strip("_"), f)
+            return CommandData.create_from(f.__name__.lower(), f)
 
     return decorator(_f) if _f is not None else decorator
