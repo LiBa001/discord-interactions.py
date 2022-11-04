@@ -70,8 +70,11 @@ class ApplicationCommandOption:
             cls.from_dict(option) for option in data.get("options", [])
         ] or None
 
-        data.pop('name_localizations')
-        data.pop('description_localizations')
+        if 'name_localizations' in data.keys():
+            data.pop('name_localizations')
+        
+        if 'description_localizations' in data.keys():
+            data.pop('description_localizations')
 
         return cls(type=option_type, **data)
 
