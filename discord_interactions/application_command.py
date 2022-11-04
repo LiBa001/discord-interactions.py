@@ -69,6 +69,10 @@ class ApplicationCommandOption:
         data["options"] = [
             cls.from_dict(option) for option in data.get("options", [])
         ] or None
+
+        data.pop('name_localizations')
+        data.pop('description_localizations')
+
         return cls(type=option_type, **data)
 
     def to_dict(self) -> dict:
